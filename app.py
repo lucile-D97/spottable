@@ -60,58 +60,58 @@ try:
     c_addr = next((c for c in df.columns if c.lower() in ['address', 'adresse']), df.columns[1])
 
     import pydeck as pdk
-import pandas as pd
-
-# ... (votre code de chargement et filtrage)
-
-with col1:
-    st.subheader("📍 Carte")
-    df_map = df_filtered.dropna(subset=['lat', 'lon']).copy()
+    import pandas as pd
     
-    if not df_map.empty:
-        # 1. URL de l'icône (Pin type Google)
-        ICON_URL = "https://img.icons8.com/color/96/marker.png"
+    # ... (votre code de chargement et filtrage)
+    
+    with col1:
+        st.subheader("📍 Carte")
+        df_map = df_filtered.dropna(subset=['lat', 'lon']).copy()
         
-        # 2. Configuration de l'icône pour chaque point
-        icon_data = {
-            "url": ICON_URL,
-            "width": 100,
-            "height": 100,
-            "anchorY": 100, # La pointe de l'épingle est sur la coordonnée
-        }
-        df_map["icon_data"] = [icon_data for _ in range(len(df_map))]
-
-        # 3. Création de la couche d'icônes
-        icon_layer = pdk.Layer(
-            type="IconLayer",
-            data=df_map,
-            get_icon="icon_data",
-            get_size=4,
-            size_scale=10,
-            get_position=["lon", "lat"],
-            pickable=True, # Indispensable pour l'interaction
-        )
-
-        # 4. Vue centrée dynamiquement
-        view_state = pdk.ViewState(
-            latitude=df_map["lat"].mean(),
-            longitude=df_map["lon"].mean(),
-            zoom=13,
-            pitch=0,
-        )
-
-        # 5. Rendu de la carte avec Tooltip (Bulle d'info)
-        st.pydeck_chart(pdk.Deck(
-            map_style="mapbox://styles/mapbox/streets-v11",
-            initial_view_state=view_state,
-            layers=[icon_layer],
-            tooltip={
-                "html": "<b>{name}</b><br/>{address}<br/><i>Cliquer pour l'itinéraire</i>",
-                "style": {"color": "white"}
+        if not df_map.empty:
+            # 1. URL de l'icône (Pin type Google)
+            ICON_URL = "https://img.icons8.com/color/96/marker.png"
+            
+            # 2. Configuration de l'icône pour chaque point
+            icon_data = {
+                "url": ICON_URL,
+                "width": 100,
+                "height": 100,
+                "anchorY": 100, # La pointe de l'épingle est sur la coordonnée
             }
-        ))
-    else:
-        st.warning("Aucune coordonnée disponible.")
+            df_map["icon_data"] = [icon_data for _ in range(len(df_map))]
+    
+            # 3. Création de la couche d'icônes
+            icon_layer = pdk.Layer(
+                type="IconLayer",
+                data=df_map,
+                get_icon="icon_data",
+                get_size=4,
+                size_scale=10,
+                get_position=["lon", "lat"],
+                pickable=True, # Indispensable pour l'interaction
+            )
+    
+            # 4. Vue centrée dynamiquement
+            view_state = pdk.ViewState(
+                latitude=df_map["lat"].mean(),
+                longitude=df_map["lon"].mean(),
+                zoom=13,
+                pitch=0,
+            )
+    
+            # 5. Rendu de la carte avec Tooltip (Bulle d'info)
+            st.pydeck_chart(pdk.Deck(
+                map_style="mapbox://styles/mapbox/streets-v11",
+                initial_view_state=view_state,
+                layers=[icon_layer],
+                tooltip={
+                    "html": "<b>{name}</b><br/>{address}<br/><i>Cliquer pour l'itinéraire</i>",
+                    "style": {"color": "white"}
+                }
+            ))
+        else:
+            st.warning("Aucune coordonnée disponible.")
 
     
     with col2:
