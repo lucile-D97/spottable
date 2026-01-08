@@ -16,6 +16,11 @@ try:
     df = pd.read_csv("Spottable v2.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower() # Nettoyage des noms de colonnes
 
+    # Force le renommage pour Streamlit et conversion en nombres
+    df = df.rename(columns={'latitude': 'lat', 'longitude': 'lon'})
+    df['lat'] = pd.to_numeric(df['lat'], errors='coerce')
+    df['lon'] = pd.to_numeric(df['lon'], errors='coerce')
+
 
     # --- FILTRES ---
     # On identifie dynamiquement la colonne des tags (peu importe la casse)
@@ -56,7 +61,7 @@ try:
 
     with col1:
         st.subheader("📍 Carte")
-        df_map = df_filtered.dropna(subset=['latitude', 'longitude'])
+        df_map = df_filtered.dropna(subset=['lat', 'lon'])
         if not df_map.empty:
             st.map(df_map)
         else:
