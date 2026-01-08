@@ -115,26 +115,26 @@ try:
 
     
     with col2:
-    st.subheader("⬇️ Liste")
-    if df_filtered.empty:
-        st.info("Aucun résultat pour ces filtres.")
-    else:
-        for _, row in df_filtered.iterrows():
-            titre = str(row[c_name]).upper()
-            with st.expander(f"**{titre}**"):
-                # Affichage de l'adresse
-                st.write(f"📍 {row[c_addr]}")
-                
-                # Affichage des tags en petit
-                if col_tags:
-                    st.caption(f"Tags : {row[col_tags]}")
-                
-                # Recherche du lien (on ajoute 'geo' à la recherche car ta colonne s'appelle Geolocation)
-                c_link = next((c for c in df.columns if any(word in c.lower() for word in ['map', 'lien', 'geo'])), None)
-                
-                if c_link and pd.notna(row[c_link]):
-                    # Bouton qui prend toute la largeur pour être facile à cliquer sur mobile
-                    st.link_button("🚀 Itinéraire Google Maps", row[c_link], use_container_width=True)
+        st.subheader("⬇️ Liste")
+        if df_filtered.empty:
+            st.info("Aucun résultat pour ces filtres.")
+        else:
+            for _, row in df_filtered.iterrows():
+                titre = str(row[c_name]).upper()
+                with st.expander(f"**{titre}**"):
+                    # Affichage de l'adresse
+                    st.write(f"📍 {row[c_addr]}")
+                    
+                    # Affichage des tags en petit
+                    if col_tags:
+                        st.caption(f"Tags : {row[col_tags]}")
+                    
+                    # Recherche du lien (on ajoute 'geo' à la recherche car ta colonne s'appelle Geolocation)
+                    c_link = next((c for c in df.columns if any(word in c.lower() for word in ['map', 'lien', 'geo'])), None)
+                    
+                    if c_link and pd.notna(row[c_link]):
+                        # Bouton qui prend toute la largeur pour être facile à cliquer sur mobile
+                        st.link_button("🚀 Itinéraire Google Maps", row[c_link], use_container_width=True)
 
 except FileNotFoundError:
     st.error("Erreur : Le fichier 'Spottable v1.csv' est introuvable sur GitHub.")
