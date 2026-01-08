@@ -68,25 +68,35 @@ try:
     # --- AFFICHAGE ---
     col1, col2 = st.columns([2, 1])
 
+    # On détecte les colonnes utiles automatiquement
+    c_name = next((c for c in df.columns if c.lower() in ['name', 'nom']), df.columns[0])
+    c_addr = next((c for c in df.columns if c.lower() in ['address', 'adresse']), df.columns[1])
+
     with col1:
         st.subheader("📍 Carte")
-        # On enlève les lignes qui n'ont pas pu être géolocalisées pour la carte
         df_map = df_filtered.dropna(subset=['lat', 'lon'])
         if not df_map.empty:
             st.map(df_map)
         else:
-            st.warning("Aucune coordonnée disponible pour la carte.")
+            st.warning("Aucune coordonnée disponible pour la carte. Vérifiez les adresses dans votre fichier.")
 
     with col2:
         st.subheader("📋 Liste des établissements")
         if df_filtered.empty:
             st.info("Aucun résultat pour ces filtres.")
-        for _, row in df_filtered.iterrows():
-            with st.expander(f"**{row['name'].upper()}**"):
-                st.write(f"📍 {row['address']}")
-                st.caption(f"Tags : {row['tags']}")
-                if 'google maps' in df.columns: # Si vous avez mis une colonne lien
-                    st.link_button("Voir sur Google Maps", row['google maps'])
+        else:
+            for _, row in df_filtered.iterrows():
+                # On utilise les noms de colonnes détectés plus haut
+                titre = str(row[c_name]).upper()
+                with st.expander(f"**{titre}**"):
+                    st.write(f"📍 {row[c_addr]}")
+                    if col_tags:
+                        st.caption(f"Tags : {row[col_tags]}")
+                    
+                    # Gestion du lien Google Maps
+                    c_link = next((c for c in df.columns if 'map' in c.lower() or 'lien' in c.lower()), None)
+                    if c_link and pd.notna(row[c_link]):
+                        st.link_button("Voir sur Google Maps", row[c_link])
 
 except FileNotFoundError:
     st.error("Erreur : Le fichier 'Spottable v1.csv' est introuvable sur GitHub.")
