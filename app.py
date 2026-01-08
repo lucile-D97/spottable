@@ -61,53 +61,53 @@ try:
 
     import pydeck as pdk  # Ajoute cet import tout en haut de ton fichier app.py
 
-# ... (reste du code inchangé)
+    # ... (reste du code inchangé)
 
-with col1:
-    st.subheader("📍 Carte")
-    df_map = df_filtered.dropna(subset=['lat', 'lon'])
+    with col1:
+        st.subheader("📍 Carte")
+        df_map = df_filtered.dropna(subset=['lat', 'lon'])
     
-    if not df_map.empty:
-        # Configuration de l'icône
-        ICON_URL = "https://img.icons8.com/plasticine/100/marker.png"
-        icon_data = {
-            "url": ICON_URL,
-            "width": 128,
-            "height": 128,
-            "anchorY": 128,
-        }
+        if not df_map.empty:
+            # Configuration de l'icône
+            ICON_URL = "https://img.icons8.com/plasticine/100/marker.png"
+            icon_data = {
+                "url": ICON_URL,
+                "width": 128,
+                "height": 128,
+                "anchorY": 128,
+            }
         
-        # Ajout de la colonne icône au dataframe
-        df_map["icon_data"] = [icon_data for _ in range(len(df_map))]
+            # Ajout de la colonne icône au dataframe
+            df_map["icon_data"] = [icon_data for _ in range(len(df_map))]
 
-        # Création de la couche d'icônes (Pins)
-        icon_layer = pdk.Layer(
-            type="IconLayer",
-            data=df_map,
-            get_icon="icon_data",
-            get_size=4,
-            size_scale=10,
-            get_position=["lon", "lat"],
-            pickable=True,
-        )
-
-        # Configuration de la vue initiale (centrée sur tes points)
-        view_state = pdk.ViewState(
-            latitude=df_map["lat"].mean(),
-            longitude=df_map["lon"].mean(),
-            zoom=13,
-            pitch=0,
-        )
-
-        # Affichage de la carte avec échelle et contrôles
-        st.pydeck_chart(pdk.Deck(
-            map_style="mapbox://styles/mapbox/light-v9",
-            initial_view_state=view_state,
-            layers=[icon_layer],
-            tooltip={"text": "{name}\n{address}"} # Bulle d'info au survol
-        ))
-    else:
-        st.warning("Aucune coordonnée disponible.")
+            # Création de la couche d'icônes (Pins)
+            icon_layer = pdk.Layer(
+                type="IconLayer",
+                data=df_map,
+                get_icon="icon_data",
+                get_size=4,
+                size_scale=10,
+                get_position=["lon", "lat"],
+                pickable=True,
+            )
+    
+            # Configuration de la vue initiale (centrée sur tes points)
+            view_state = pdk.ViewState(
+                latitude=df_map["lat"].mean(),
+                longitude=df_map["lon"].mean(),
+                zoom=13,
+                pitch=0,
+            )
+    
+            # Affichage de la carte avec échelle et contrôles
+            st.pydeck_chart(pdk.Deck(
+                map_style="mapbox://styles/mapbox/light-v9",
+                initial_view_state=view_state,
+                layers=[icon_layer],
+                tooltip={"text": "{name}\n{address}"} # Bulle d'info au survol
+            ))
+        else:
+            st.warning("Aucune coordonnée disponible.")
 
     with col2:
         st.subheader("⬇️ Liste")
