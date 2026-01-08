@@ -29,9 +29,27 @@ st.markdown(f"""
         font-weight: bold;
         border: 1px solid #d92644;
     }}
+    .stCheckbox [data-testid="stWidgetLabel"] p {
+        font-weight: bold;
+    }
+    div[data-baseweb="toggle"] > div:nth-child(2) {
+        background-color: #d92644 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
+# Barre de recherche centrée ou à gauche (1/3 de la largeur sur Web)
+col_search, col_empty = st.columns([1, 2]) 
+
+with col_search:
+    search_query = st.text_input("🔍 Rechercher un spot", placeholder="Nom du restaurant...")
+
+# On filtre déjà par le nom si une recherche est saisie
+if search_query:
+    df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)]
+else:
+    df_filtered = df.copy()
+    
 
 # --- CHARGEMENT DES DONNÉES ---
 try:
@@ -60,15 +78,28 @@ try:
         
         selected_tags = st.multiselect("Filtrer par tags :", sorted(list(all_tags)))
 
-        # Logique de filtrage
+        st.write("### Filtrer")
+        # On récupère tous les tags uniques
+        all_tags = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
+        
+        # Création des switchs sur plusieurs colonnes pour gagner de la place
+        cols = st.columns(len(all_tags) if len(all_tags) < 5 else 4) # S'adapte au nombre de tags
+        selected_tags = []
+        
+        for i, tag in enumerate(all_tags):
+            # On répartit les switchs dans les colonnes
+            with cols[i % len(cols)]:
+                if st.toggle(tag, key=tag):
+                    selected_tags.append(tag)
+        
+        # Application du filtre par tags sur le dataframe déjà filtré par le nom
         if selected_tags:
-            # On vérifie si au moins un des tags sélectionnés est présent dans la cellule
             def match_tags(cell_value):
                 if pd.isna(cell_value): return False
                 cell_tags = [t.strip() for t in str(cell_value).split(',')]
                 return any(tag in cell_tags for tag in selected_tags)
             
-            df_filtered = df[df[col_tags].apply(match_tags)]
+            df_filtered = df_filtered[df_filtered[col_tags].apply(match_tags)]
         else:
             df_filtered = df
     else:
