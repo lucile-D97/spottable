@@ -89,52 +89,45 @@ try:
     
     with col1:
         st.subheader("📍 Carte")
+        # On s'assure d'utiliser les bonnes colonnes renommées
         df_map = df_filtered.dropna(subset=['lat', 'lon']).copy()
         
         if not df_map.empty:
-            # 1. URL de l'icône (Pin type Google)
-            ICON_URL = "https://img.icons8.com/color/d92644/marker.png"
-            
-            # 2. Configuration de l'icône pour chaque point
+            # Icône personnalisée avec ta couleur #d92644
+            ICON_URL = "https://img.icons8.com/ios-filled/100/d92644/marker.png"
             icon_data = {
                 "url": ICON_URL,
                 "width": 100,
                 "height": 100,
-                "anchorY": 100, # La pointe de l'épingle est sur la coordonnée
+                "anchorY": 100,
             }
             df_map["icon_data"] = [icon_data for _ in range(len(df_map))]
     
-            # 3. Création de la couche d'icônes
             icon_layer = pdk.Layer(
-                type="IconLayer",
+                "IconLayer",
                 data=df_map,
                 get_icon="icon_data",
                 get_size=4,
                 size_scale=10,
                 get_position=["lon", "lat"],
-                pickable=True, # Indispensable pour l'interaction
+                pickable=True,
             )
     
-            # 4. Vue centrée dynamiquement
             view_state = pdk.ViewState(
                 latitude=df_map["lat"].mean(),
                 longitude=df_map["lon"].mean(),
-                zoom=13,
+                zoom=12,
                 pitch=0,
             )
     
-            # 5. Rendu de la carte avec Tooltip (Bulle d'info)
             st.pydeck_chart(pdk.Deck(
-                map_style="mapbox://styles/mapbox/streets-v11",
+                map_style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
                 initial_view_state=view_state,
                 layers=[icon_layer],
-                tooltip={
-                    "html": "<b>{name}</b><br/>{address}<br/><i>Cliquer pour l'itinéraire</i>",
-                    "style": {"color": "white"}
-                }
+                tooltip={"text": "{name}\n{address}"}
             ))
         else:
-            st.warning("Aucune coordonnée disponible.")
+            st.warning("Vérifiez les coordonnées dans votre fichier.")
 
     
     with col2:
