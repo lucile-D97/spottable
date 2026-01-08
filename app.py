@@ -36,17 +36,33 @@ try:
             df[['lat', 'lon']] = pd.DataFrame(coords.tolist(), index=df.index)
 
     # --- FILTRES ---
-    # On récupère tous les tags uniques
-    all_tags = set()
-    df['Tags'].str.split(',').apply(lambda x: [all_tags.add(t.strip()) for t in x if isinstance(x, list)])
-    
-    selected_tags = st.multiselect("Filtrer par tags :", sorted(list(all_tags)))
+    # On identifie dynamiquement la colonne des tags (peu importe la casse)
+    col_tags = next((c for c in df.columns if c.lower() == 'tags'), None)
 
-    # Logique de filtrage
-    if selected_tags:
-        mask = df['Tags'].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')))
-        df_filtered = df[mask]
+    if col_tags:
+        # On récupère tous les tags uniques en nettoyant les espaces et les vides
+        all_tags = set()
+        for val in df[col_tags].dropna():
+            for t in str(val).split(','):
+                tag_clean = t.strip()
+                if tag_clean:
+                    all_tags.add(tag_clean)
+        
+        selected_tags = st.multiselect("Filtrer par tags :", sorted(list(all_tags)))
+
+        # Logique de filtrage
+        if selected_tags:
+            # On vérifie si au moins un des tags sélectionnés est présent dans la cellule
+            def match_tags(cell_value):
+                if pd.isna(cell_value): return False
+                cell_tags = [t.strip() for t in str(cell_value).split(',')]
+                return any(tag in cell_tags for tag in selected_tags)
+            
+            df_filtered = df[df[col_tags].apply(match_tags)]
+        else:
+            df_filtered = df
     else:
+        st.error("Colonne 'Tags' non trouvée dans le fichier CSV.")
         df_filtered = df
 
     # --- AFFICHAGE ---
