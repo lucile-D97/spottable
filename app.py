@@ -34,6 +34,8 @@ try:
         with st.spinner("Calcul des coordonnées GPS en cours... Merci de patienter."):
             coords = df['address'].apply(get_lat_lon)
             df[['lat', 'lon']] = pd.DataFrame(coords.tolist(), index=df.index)
+    
+    st.write(df[['name', 'lat', 'lon']].head()) # Affiche un petit tableau pour vérifier
 
     # --- FILTRES ---
     # On identifie dynamiquement la colonne des tags (peu importe la casse)
