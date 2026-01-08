@@ -9,24 +9,11 @@ st.set_page_config(page_title="Mes spots", layout="wide")
 
 st.title("Mes spots")
 
-# --- FONCTION DE GÉOCODAGE (Conversion Adresse -> GPS) ---
-geolocator = Nominatim(user_agent="my-spots_app_v1")
-geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
-
-@st.cache_data
-def get_lat_lon(address):
-    try:
-        location = geolocator.geocode(address)
-        if location:
-            return location.latitude, location.longitude
-        return None, None
-    except:
-        return None, None
 
 # --- CHARGEMENT DES DONNÉES ---
 try:
     # Lecture du CSV avec détection automatique du séparateur (virgule ou point-virgule)
-    df = pd.read_csv("Spottable v1.csv", sep=None, engine='python')
+    df = pd.read_csv("Spottable v2.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower() # Nettoyage des noms de colonnes
 
     # Si les colonnes lat/lon n'existent pas, on les crée
