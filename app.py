@@ -107,4 +107,37 @@ try:
             )
 
             st.pydeck_chart(pdk.Deck(
-                map_style="
+                map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                initial_view_state=view_state,
+                layers=[icon_layer],
+                tooltip={"text": "{"+c_name+"}\n{"+c_addr+"}"}
+            ))
+        else:
+            st.warning("Aucun spot à afficher sur la carte.")
+
+    with col2:
+        st.subheader("⬇️ Liste")
+        if df_filtered.empty:
+            st.info("Aucun résultat pour ces filtres.")
+        else:
+            for _, row in df_filtered.iterrows():
+                nom_affiche = str(row[c_name])
+                with st.expander(f"**{nom_affiche}**"):
+                    st.write(f"📍 {row[c_addr]}")
+                    
+                    c_desc = next((c for c in df.columns if 'desc' in c.lower()), None)
+                    if c_desc and pd.notna(row[c_desc]):
+                        st.write(f"*{row[c_desc]}*")
+                    
+                    if col_tags and pd.notna(row[col_tags]):
+                        tags_list = [t.strip() for t in str(row[col_tags]).split(',')]
+                        tag_html = "".join([f'<span class="tag-label">{t}</span>' for t in tags_list])
+                        st.markdown(tag_html, unsafe_allow_html=True)
+                    
+                    st.write("")
+                    c_link = next((c for c in df.columns if any(word in c.lower() for word in ['map', 'lien', 'geo'])), None)
+                    if c_link and pd.notna(row[c_link]):
+                        st.link_button("**Y aller**", row[c_link], use_container_width=True)
+
+except Exception as e:
+    st.error(f"Erreur lors du chargement ou de l'exécution : {e}")
