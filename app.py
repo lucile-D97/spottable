@@ -16,13 +16,6 @@ try:
     df = pd.read_csv("Spottable v2.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower() # Nettoyage des noms de colonnes
 
-    # Si les colonnes lat/lon n'existent pas, on les crée
-    if 'lat' not in df.columns or 'lon' not in df.columns:
-        with st.spinner("Calcul des coordonnées GPS en cours... Merci de patienter."):
-            coords = df['address'].apply(get_lat_lon)
-            df[['lat', 'lon']] = pd.DataFrame(coords.tolist(), index=df.index)
-    
-    st.write(df[['name', 'lat', 'lon']].head()) # Affiche un petit tableau pour vérifier
 
     # --- FILTRES ---
     # On identifie dynamiquement la colonne des tags (peu importe la casse)
@@ -63,7 +56,7 @@ try:
 
     with col1:
         st.subheader("📍 Carte")
-        df_map = df_filtered.dropna(subset=['lat', 'lon'])
+        df_map = df_filtered.dropna(subset=['Latitude', 'Longitude'])
         if not df_map.empty:
             st.map(df_map)
         else:
