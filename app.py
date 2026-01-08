@@ -12,29 +12,30 @@ st.title("Mes spots")
 # Configuration des couleurs des boutons
 st.markdown(f"""
     <style>
+    /* Style du bouton Y aller */
     .stButton>button {{
-        background-color: #d92644;
-        color: white;
-        border-radius: 8px;
-        border: None;
+        background-color: #d92644 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        border: none !important;
     }}
+    /* Style des Switchs (Toggles) */
+    div[data-baseweb="toggle"] > div:nth-child(2) {{
+        background-color: #d92644 !important;
+    }}
+    /* Style des étiquettes (Tags) */
     .tag-label {{
         display: inline-block;
-        background-color: #f0f2f6;
+        background-color: #ffffff;
         color: #d92644;
-        padding: 2px 8px;
-        border-radius: 12px;
+        padding: 2px 10px;
+        border-radius: 15px;
         margin-right: 5px;
-        font-size: 0.8rem;
+        margin-bottom: 5px;
+        font-size: 0.75rem;
         font-weight: bold;
         border: 1px solid #d92644;
     }}
-    .stCheckbox [data-testid="stWidgetLabel"] p {
-        font-weight: bold;
-    }
-    div[data-baseweb="toggle"] > div:nth-child(2) {
-        background-color: #d92644 !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
