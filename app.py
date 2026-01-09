@@ -10,7 +10,7 @@ st.markdown(f"""
     <style>
     /* Fond de l'application */
     .stApp {{
-        background-color: #fde8ea;
+        background-color: #bde0dd;
     }}
 
     /* Titre en Rouge */
