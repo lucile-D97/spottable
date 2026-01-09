@@ -96,7 +96,32 @@ st.title("Mes spots")
 try:
     df = pd.read_csv("Spottable v2.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
+
+    from streamlit_js_eval import get_geolocation
+
+    # Récupération de la position de l'utilisateur
+    user_pos = get_geolocation()
     
+    # Préparation du point de l'utilisateur
+    user_layer = None
+    if user_pos:
+        user_lat = user_pos['coords']['latitude']
+        user_lon = user_pos['coords']['longitude']
+        
+        # Création d'un petit DataFrame pour le point "Moi"
+        df_user = pd.DataFrame({'lat': [user_lat], 'lon': [user_lon]})
+        
+        # Icône différente pour l'utilisateur (un point bleu par exemple)
+        user_layer = pdk.Layer(
+            "ScatterplotLayer",
+            data=df_user,
+            get_position=["lon", "lat"],
+            get_color=[0, 150, 255, 200], # Bleu
+            get_radius=100,
+            pickable=True,
+        )
+    
+
     # Harmonisation des coordonnées
     df = df.rename(columns={'latitude': 'lat', 'longitude': 'lon'})
     df['lat'] = pd.to_numeric(df['lat'], errors='coerce')
@@ -170,11 +195,15 @@ try:
                 pitch=0,
             )
 
+            layers_to_show = [icon_layer]
+            if user_layer:
+                layers_to_show.append(user_layer)
+            
             st.pydeck_chart(pdk.Deck(
-                map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                map_style="...",
                 initial_view_state=view_state,
-                layers=[icon_layer],
-                tooltip={"text": "{"+c_name+"}\n{"+c_addr+"}"}
+                layers=layers_to_show, # Utilise la liste combinée ici
+                tooltip=...
             ))
         else:
             st.warning("Aucun spot à afficher sur la carte.")
