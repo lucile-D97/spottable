@@ -6,7 +6,7 @@ from streamlit_js_eval import get_geolocation
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# 2. Style CSS complet (Nettoyage de la barre blanche et design harmonisé)
+# 2. Style CSS complet (Correctif géolocalisation + Suppression barre blanche)
 st.markdown(f"""
     <style>
     /* Fond de l'application */
@@ -14,50 +14,49 @@ st.markdown(f"""
         background-color: #bad8d6 !important;
     }}
     
-    /* SUPPRESSION DE LA BARRE BLANCHE (Header) */
+    /* SUPPRESSION RADICALE DU HEADER ET DE L'ESPACE BLANC */
     header[data-testid="stHeader"] {{
-        background-color: rgba(0,0,0,0) !important;
-        border-bottom: none !important;
+        display: none !important;
     }}
     
-    /* Supprime la ligne de décoration Streamlit en haut */
     div[data-testid="stDecoration"] {{
         display: none !important;
     }}
 
-    /* Titre en Rouge */
+    /* Masque l'élément invisible créé par le module de géolocalisation */
+    iframe {{
+        display: none;
+    }}
+
+    .main .block-container {{
+        padding-top: 2rem !important;
+    }}
+
+    /* Titre */
     h1 {{
         color: #d92644 !important;
-        margin-top: -50px !important;
+        margin-top: -30px !important;
     }}
 
-    /* Texte global en Gris foncé */
-    html, body, [class*="st-"], p, div, span, label {{
-        color: #31333f !important;
-    }}
-
-    /* Barre de recherche : Gris clair et texte foncé */
+    /* Barre de recherche */
     div[data-testid="stTextInput"] div[data-baseweb="input"] {{
         background-color: #f0f2f6 !important;
         border: none !important;
     }}
+    
     div[data-testid="stTextInput"] input {{
-        background-color: #f0f2f6 !important;
         color: #31333f !important;
         -webkit-text-fill-color: #31333f !important;
     }}
 
-    /* Expanders blancs */
+    /* Expanders */
     div[data-testid="stExpander"] {{
         background-color: white !important;
         border: none !important;
         border-radius: 8px !important;
     }}
-    div[data-testid="stExpander"] summary {{
-        background-color: white !important;
-    }}
 
-    /* BOUTON "Y ALLER" (Rouge clair et texte foncé) */
+    /* Bouton Y aller */
     .stLinkButton a {{
         background-color: #fde8ea !important;
         color: #31333f !important;
@@ -67,15 +66,9 @@ st.markdown(f"""
         text-decoration: none !important;
         display: flex !important;
         justify-content: center !important;
-        padding: 10px !important;
-    }}
-    
-    .stLinkButton a:hover {{
-        background-color: #fbcfd3 !important;
-        border: none !important;
     }}
 
-    /* Étiquettes de tags */
+    /* Tags et Toggles */
     .tag-label {{
         display: inline-block;
         background-color: #f0f2f6;
@@ -83,12 +76,9 @@ st.markdown(f"""
         padding: 2px 10px;
         border-radius: 15px;
         margin-right: 5px;
-        margin-bottom: 5px;
         font-size: 0.75rem;
         font-weight: bold;
     }}
-
-    /* Toggles */
     div[data-testid="stWidgetLabel"] + div div[role="switch"] {{
         background-color: #f0f2f6 !important;
     }}
@@ -101,10 +91,11 @@ st.markdown(f"""
 st.title("Mes spots")
 
 # 3. Logique de Géolocalisation
+# On place le composant ici, mais le CSS "iframe {display: none;}" s'occupe de cacher son espace blanc
 user_pos = get_geolocation()
 user_layer = None
 
-if user_pos:
+if user_pos and 'coords' in user_pos:
     df_user = pd.DataFrame({
         'lat': [user_pos['coords']['latitude']], 
         'lon': [user_pos['coords']['longitude']]
@@ -113,8 +104,8 @@ if user_pos:
         "ScatterplotLayer",
         data=df_user,
         get_position=["lon", "lat"],
-        get_color=[0, 150, 255, 200], 
-        get_radius=30, # TAILLE DIMINUÉE ICI (était à 150)
+        get_color=[0, 150, 255, 255], # Bleu pur
+        get_radius=10, # TAILLE TRÈS PETITE
     )
 
 # 4. Chargement et Traitement des Données
@@ -129,14 +120,14 @@ try:
     c_addr = next((c for c in df.columns if c.lower() in ['address', 'adresse']), df.columns[1])
     col_tags = next((c for c in df.columns if c.lower() == 'tags'), None)
 
-    # --- RECHERCHE (Design initial rétabli) ---
+    # --- RECHERCHE ---
     col_search, _ = st.columns([1, 2])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
 
     df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy() if search_query else df.copy()
 
-    # --- FILTRES PAR TAGS ---
+    # --- FILTRES ---
     st.write("### Filtrer")
     if col_tags:
         all_tags = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
@@ -158,8 +149,10 @@ try:
 
     with col1:
         df_map = df_filtered.dropna(subset=['lat', 'lon']).copy()
+        # On centre sur les spots ou sur Paris par défaut
         view_lat = df_map["lat"].mean() if not df_map.empty else 48.8566
         view_lon = df_map["lon"].mean() if not df_map.empty else 2.3522
+        
         view_state = pdk.ViewState(latitude=view_lat, longitude=view_lon, zoom=13)
         
         icon_data = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
