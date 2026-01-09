@@ -44,29 +44,25 @@ st.markdown(f"""
     }}
 
     /* 5. BOUTON "Y ALLER" : Correction spécifique pour st.link_button */
-    div.stButton > a, 
-    div.stButton > button, 
-    div.stButton > a span, 
-    div.stButton > button p {{
+    a[data-testid="stBaseButton-secondary"] {{
         background-color: #fde8ea !important;
         color: #31333f !important;
-        -webkit-text-fill-color: #31333f !important;
         border: none !important;
         text-decoration: none !important;
-        font-weight: bold !important;
     }}
 
-    /* Ciblage spécifique du conteneur du bouton pour enlever le fond noir */
-    div[data-testid="stBaseButton-secondaryFormSubmit"], 
-    div[data-testid="stBaseButton-secondary"],
-    .st-key-y_aller_btn button {{
-        background-color: #fde8ea !important;
-        border: none !important;
+    /* On force la couleur du texte à l'intérieur (le gras et le span) */
+    a[data-testid="stBaseButton-secondary"] p, 
+    a[data-testid="stBaseButton-secondary"] span,
+    a[data-testid="stBaseButton-secondary"] strong {{
+        color: #31333f !important;
+        -webkit-text-fill-color: #31333f !important;
     }}
 
-    /* État au survol */
-    div.stButton > a:hover, div.stButton > button:hover {{
+    /* État au survol pour éviter le gris clair */
+    a[data-testid="stBaseButton-secondary"]:hover {{
         background-color: #fbcfd3 !important;
+        color: #31333f !important;
         border: none !important;
     }}
 
