@@ -9,6 +9,27 @@ st.title("Mes spots")
 # 2. Style CSS
 st.markdown(f"""
     <style>
+    /* 1. Couleur de l'arrière-plan de l'application entière */
+    .stApp {{
+        background-color: #fff5f6;
+    }}
+
+    /* 2. Couleur de l'arrière-plan de la barre latérale (si tu en utilises une) */
+    [data-testid="stSidebar"] {{
+        background-color: #fde8ea;
+    }}
+
+    /* 3. Style des cartes (Expanders) pour qu'ils ressortent sur le fond clair */
+    .streamlit-expanderHeader {{
+        background-color: white !important;
+        border-radius: 8px !important;
+    }}
+    .st-expander {{
+        border: 1px solid #fde8ea !important;
+        background-color: white !important;
+    }}
+
+    /* --- TES STYLES PRÉCÉDENTS (Boutons, Tags, Toggles) --- */
     .stButton>button {{
         background-color: #d92644 !important;
         color: white !important;
