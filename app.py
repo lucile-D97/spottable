@@ -44,25 +44,30 @@ st.markdown(f"""
     }}
 
     /* 5. BOUTON "Y ALLER" : Correction spécifique pour st.link_button */
-    /* On cible le bouton et son lien interne */
-    div.stButton > a, div.stButton > button {{
+    div.stButton > a, 
+    div.stButton > button, 
+    div.stButton > a span, 
+    div.stButton > button p {{
         background-color: #fde8ea !important;
         color: #31333f !important;
+        -webkit-text-fill-color: #31333f !important;
         border: none !important;
-        border-radius: 8px !important;
         text-decoration: none !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
         font-weight: bold !important;
-        padding: 0.5rem !important;
-        transition: background-color 0.3s !important;
+    }}
+
+    /* Ciblage spécifique du conteneur du bouton pour enlever le fond noir */
+    div[data-testid="stBaseButton-secondaryFormSubmit"], 
+    div[data-testid="stBaseButton-secondary"],
+    .st-key-y_aller_btn button {{
+        background-color: #fde8ea !important;
+        border: none !important;
     }}
 
     /* État au survol */
     div.stButton > a:hover, div.stButton > button:hover {{
         background-color: #fbcfd3 !important;
-        color: #31333f !important;
+        border: none !important;
     }}
 
     /* 6. ÉTIQUETTES DE TAGS */
