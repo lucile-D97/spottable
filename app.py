@@ -24,18 +24,22 @@ st.markdown(f"""
     }}
 
     /* Barre de recherche en Gris clair */
-    div[data-baseweb="input"] {{
+    div[data-testid="stTextInput"] div[data-baseweb="input"] {
         background-color: #f0f2f6 !important;
-        border-radius: 8px !important;
-    }}
+        border: 1px solid #dcdfe6 !important;
+    }
+    div[data-testid="stTextInput"] input {
+        background-color: #f0f2f6 !important;
+        color: #31333f !important;
+    }
 
     /* Switchs (Toggles) : Gris quand éteint, Rouge quand allumé */
-    div[data-baseweb="toggle"] > div:nth-child(1) {{
+    div[data-testid="stWidgetLabel"] + div div[role="switch"] {
         background-color: #f0f2f6 !important;
-    }}
-    div[data-baseweb="toggle"][aria-checked="true"] > div:nth-child(2) {{
+    }
+    div[data-testid="stWidgetLabel"] + div div[aria-checked="true"] {
         background-color: #d92644 !important;
-    }}
+    }
 
     /* Étiquettes (Tags) */
     .tag-label {{
@@ -88,8 +92,12 @@ try:
     # --- RECHERCHE ---
     col_search, _ = st.columns([1, 2]) 
     with col_search:
-        # CORRECTION ICI : Ajout du label "Rechercher"
-        search_query = st.text_input("Rechercher", placeholder="Rechercher un spot")
+        # label_visibility="collapsed" enlève le texte au-dessus
+        search_query = st.text_input(
+            "Rechercher", 
+            placeholder="Rechercher un spot", 
+            label_visibility="collapsed"
+        )
 
     if search_query:
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
