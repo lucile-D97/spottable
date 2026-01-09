@@ -4,7 +4,6 @@ import pydeck as pdk
 
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
-st.set_page_config(..., menu_items={'Get help': None, 'Report a bug': None, 'About': None})
 st.title("Mes spots")
 
 # 2. Style CSS
