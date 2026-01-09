@@ -6,22 +6,29 @@ from streamlit_js_eval import get_geolocation
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# 2. Style CSS complet (Optimisé pour forcer les couleurs)
+# 2. Style CSS complet (Nettoyage de la barre blanche et design harmonisé)
 st.markdown(f"""
     <style>
     /* Fond de l'application */
     .stApp {{
-        background-color: #bad8d6;
+        background-color: #bad8d6 !important;
     }}
     
-    /* Supprime la barre blanche en haut */
+    /* SUPPRESSION DE LA BARRE BLANCHE (Header) */
     header[data-testid="stHeader"] {{
         background-color: rgba(0,0,0,0) !important;
+        border-bottom: none !important;
+    }}
+    
+    /* Supprime la ligne de décoration Streamlit en haut */
+    div[data-testid="stDecoration"] {{
+        display: none !important;
     }}
 
     /* Titre en Rouge */
     h1 {{
         color: #d92644 !important;
+        margin-top: -50px !important; /* Remonte le titre pour compenser l'espace du header */
     }}
 
     /* Texte global en Gris foncé */
@@ -50,8 +57,8 @@ st.markdown(f"""
         background-color: white !important;
     }}
 
-    /* BOUTON "Y ALLER" : Rouge clair et texte foncé */
-    .stLinkButton a {{
+    /* BOUTON "Y ALLER" & BOUTON "MOI" (Rouge clair et texte foncé) */
+    .stLinkButton a, div.stButton > button {{
         background-color: #fde8ea !important;
         color: #31333f !important;
         border: none !important;
@@ -62,11 +69,11 @@ st.markdown(f"""
         justify-content: center !important;
         padding: 10px !important;
     }}
-    .stLinkButton a:hover {{
+    
+    /* Couleur au survol */
+    .stLinkButton a:hover, div.stButton > button:hover {{
         background-color: #fbcfd3 !important;
-    }}
-    .stLinkButton a span, .stLinkButton a p {{
-        color: #31333f !important;
+        border: none !important;
     }}
 
     /* Étiquettes de tags */
@@ -94,29 +101,29 @@ st.markdown(f"""
 
 st.title("Mes spots")
 
-# 3. Logique et Données
+# 3. Logique de Géolocalisation
+user_pos = get_geolocation()
+user_layer = None
+curr_lat, curr_lon = None, None
+
+if user_pos:
+    curr_lat = user_pos['coords']['latitude']
+    curr_lon = user_pos['coords']['longitude']
+    df_user = pd.DataFrame({'lat': [curr_lat], 'lon': [curr_lon]})
+    user_layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=df_user,
+        get_position=["lon", "lat"],
+        get_color=[0, 150, 255, 200], # Point bleu
+        get_radius=150,
+    )
+
+# 4. Chargement et Traitement des Données
 try:
     df = pd.read_csv("Spottable v2.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
-    # --- Géolocalisation ---
-    user_pos = get_geolocation()
-    user_layer = None
-    if user_pos:
-        df_user = pd.DataFrame({
-            'lat': [user_pos['coords']['latitude']], 
-            'lon': [user_pos['coords']['longitude']]
-        })
-        user_layer = pdk.Layer(
-            "ScatterplotLayer",
-            data=df_user,
-            get_position=["lon", "lat"],
-            get_color=[0, 150, 255, 200], # Point bleu
-            get_radius=150,
-            pickable=True,
-        )
-
-    # Harmonisation data
+    # Harmonisation des colonnes
     df = df.rename(columns={'latitude': 'lat', 'longitude': 'lon'})
     df['lat'] = pd.to_numeric(df['lat'], errors='coerce')
     df['lon'] = pd.to_numeric(df['lon'], errors='coerce')
@@ -125,14 +132,26 @@ try:
     c_addr = next((c for c in df.columns if c.lower() in ['address', 'adresse']), df.columns[1])
     col_tags = next((c for c in df.columns if c.lower() == 'tags'), None)
 
-    # Barre de recherche
-    col_search, _ = st.columns([1, 2])
+    # --- RECHERCHE ET BOUTON RECENTRE ---
+    col_search, col_recenter = st.columns([3, 1])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
+    
+    # Gestion de l'état du centrage de la carte
+    if "map_center" not in st.session_state:
+        st.session_state.map_center = None
 
+    with col_recenter:
+        if st.button("🎯 Moi", use_container_width=True):
+            if curr_lat and curr_lon:
+                st.session_state.map_center = [curr_lat, curr_lon]
+            else:
+                st.warning("Position non détectée.")
+
+    # Filtrage par recherche
     df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy() if search_query else df.copy()
 
-    # Filtres
+    # --- FILTRES PAR TAGS (SWITCHS) ---
     st.write("### Filtrer")
     if col_tags:
         all_tags = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
@@ -149,41 +168,56 @@ try:
                 return any(t.strip() in selected_tags for t in str(val).split(','))
             df_filtered = df_filtered[df_filtered[col_tags].apply(match_tags)]
 
-    # 4. Affichage
+    # --- AFFICHAGE (CARTE ET LISTE) ---
     col1, col2 = st.columns([2, 1])
 
     with col1:
         df_map = df_filtered.dropna(subset=['lat', 'lon']).copy()
-        if not df_map.empty:
-            icon_data = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
-            df_map["icon_data"] = [icon_data for _ in range(len(df_map))]
-            
-            layers = [pdk.Layer("IconLayer", data=df_map, get_icon="icon_data", get_size=4, size_scale=10, get_position=["lon", "lat"], pickable=True)]
-            if user_layer: layers.append(user_layer)
-
-            view_state = pdk.ViewState(latitude=df_map["lat"].mean(), longitude=df_map["lon"].mean(), zoom=12)
-            st.pydeck_chart(pdk.Deck(
-                map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-                initial_view_state=view_state,
-                layers=layers,
-                tooltip={"text": "{"+c_name+"}\n{"+c_addr+"}"}
-            ))
+        
+        # Calcul du centrage de la vue
+        if st.session_state.map_center:
+            view_lat, view_lon = st.session_state.map_center
         else:
-            st.warning("Aucun spot trouvé.")
+            view_lat = df_map["lat"].mean() if not df_map.empty else 48.8566
+            view_lon = df_map["lon"].mean() if not df_map.empty else 2.3522
+
+        view_state = pdk.ViewState(latitude=view_lat, longitude=view_lon, zoom=13)
+        
+        # Icônes des spots
+        icon_data = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
+        df_map["icon_data"] = [icon_data for _ in range(len(df_map))]
+        
+        layers = [pdk.Layer("IconLayer", data=df_map, get_icon="icon_data", get_size=4, size_scale=10, get_position=["lon", "lat"], pickable=True)]
+        if user_layer: 
+            layers.append(user_layer)
+
+        st.pydeck_chart(pdk.Deck(
+            map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+            initial_view_state=view_state,
+            layers=layers,
+            tooltip={"text": "{"+c_name+"}\n{"+c_addr+"}"}
+        ))
 
     with col2:
-        for _, row in df_filtered.iterrows():
-            with st.expander(f"**{row[c_name]}**"):
-                st.write(f"📍 {row[c_addr]}")
-                c_desc = next((c for c in df.columns if 'desc' in c.lower()), None)
-                if c_desc and pd.notna(row[c_desc]): st.write(f"*{row[c_desc]}*")
-                if col_tags and pd.notna(row[col_tags]):
-                    tags = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
-                    st.markdown(tags, unsafe_allow_html=True)
-                st.write("")
-                c_link = next((c for c in df.columns if any(w in c.lower() for w in ['map', 'lien', 'geo'])), None)
-                if c_link and pd.notna(row[c_link]):
-                    st.link_button("**Y aller**", row[c_link], use_container_width=True)
+        if df_filtered.empty:
+            st.info("Aucun résultat.")
+        else:
+            for _, row in df_filtered.iterrows():
+                with st.expander(f"**{row[c_name]}**"):
+                    st.write(f"📍 {row[c_addr]}")
+                    
+                    c_desc = next((c for c in df.columns if 'desc' in c.lower()), None)
+                    if c_desc and pd.notna(row[c_desc]):
+                        st.write(f"*{row[c_desc]}*")
+                    
+                    if col_tags and pd.notna(row[col_tags]):
+                        tags = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
+                        st.markdown(tags, unsafe_allow_html=True)
+                    
+                    st.write("")
+                    c_link = next((c for c in df.columns if any(w in c.lower() for w in ['map', 'lien', 'geo'])), None)
+                    if c_link and pd.notna(row[c_link]):
+                        st.link_button("**Y aller**", row[c_link], use_container_width=True)
 
 except Exception as e:
-    st.error(f"Erreur : {e}")
+    st.error(f"Une erreur est survenue : {e}")
