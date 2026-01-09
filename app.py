@@ -4,6 +4,7 @@ import pydeck as pdk
 
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
+st.set_page_config(..., menu_items={'Get help': None, 'Report a bug': None, 'About': None})
 st.title("Mes spots")
 
 # 2. Style CSS
@@ -37,6 +38,33 @@ st.markdown(f"""
         border-radius: 8px !important;
     }}
 
+    /* 1. Style de la barre de recherche (Gris clair) */
+    div[data-baseweb="input"] {
+        background-color: #f0f2f6 !important; /* Gris clair */
+        border-radius: 8px !important;
+    }
+    
+    /* 2. Style des Switchs (Toggles) */
+    /* Fond quand le switch est DÉSACTIVÉ (Gris clair) */
+    div[data-baseweb="toggle"] > div:nth-child(1) {
+        background-color: #f0f2f6 !important;
+    }
+    
+    /* Fond quand le switch est ACTIVÉ (Ton rouge principal) */
+    div[data-baseweb="toggle"][aria-checked="true"] > div:nth-child(2) {
+        background-color: #d92644 !important;
+    }
+
+    /* Le petit bouton rond du switch */
+    div[data-baseweb="toggle"] div:nth-child(3) {
+        background-color: white !important;
+    }
+
+    /* 3. Couleur du texte de la recherche (Gris foncé) */
+    input {
+        color: #31333f !important;
+    }
+
     /* 6. Style des étiquettes (Tags) */
     .tag-label {{
         display: inline-block;
@@ -59,10 +87,6 @@ st.markdown(f"""
         border: none !important;
     }}
     
-    /* 8. Couleur des switchs (Toggles) */
-    div[data-baseweb="toggle"] > div:nth-child(2) {{
-        background-color: #d92644 !important;
-    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -84,7 +108,7 @@ try:
     # --- RECHERCHE ---
     col_search, _ = st.columns([1, 2]) 
     with col_search:
-        search_query = st.text_input("🔍 Rechercher un spot", placeholder="Nom du restaurant...")
+        search_query = st.text_input(placeholder="Rechercher un spot")
 
     if search_query:
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
@@ -114,7 +138,6 @@ try:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.subheader("📍 Carte")
         df_map = df_filtered.dropna(subset=['lat', 'lon']).copy()
         
         if not df_map.empty:
@@ -149,7 +172,6 @@ try:
             st.warning("Aucun spot à afficher sur la carte.")
 
     with col2:
-        st.subheader("⬇️ Liste")
         if df_filtered.empty:
             st.info("Aucun résultat pour ces filtres.")
         else:
