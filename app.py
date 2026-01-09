@@ -44,25 +44,26 @@ st.markdown(f"""
     }}
 
     /* 5. BOUTON "Y ALLER" : Correction spécifique pour st.link_button */
-    a[data-testid="stBaseButton-secondary"] {{
+    .stLinkButton a {{
         background-color: #fde8ea !important;
         color: #31333f !important;
         border: none !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
         text-decoration: none !important;
+        display: flex !important;
+        justify-content: center !important;
+        padding: 10px !important;
     }}
 
-    /* On force la couleur du texte à l'intérieur (le gras et le span) */
-    a[data-testid="stBaseButton-secondary"] p, 
-    a[data-testid="stBaseButton-secondary"] span,
-    a[data-testid="stBaseButton-secondary"] strong {{
+    /* On force la couleur du texte à l'intérieur du bouton */
+    .stLinkButton a span, .stLinkButton a p {{
         color: #31333f !important;
-        -webkit-text-fill-color: #31333f !important;
     }}
 
-    /* État au survol pour éviter le gris clair */
-    a[data-testid="stBaseButton-secondary"]:hover {{
+    /* Effet au survol */
+    .stLinkButton a:hover {{
         background-color: #fbcfd3 !important;
-        color: #31333f !important;
         border: none !important;
     }}
 
