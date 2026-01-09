@@ -21,7 +21,7 @@ st.markdown(f"""
         color: #31333f !important;
     }}
 
-    /* 3. BARRE DE RECHERCHE : Forcer le gris clair et texte foncé */
+    /* 3. BARRE DE RECHERCHE : Gris clair et texte foncé */
     div[data-testid="stTextInput"] div[data-baseweb="input"] {{
         background-color: #f0f2f6 !important;
         border: none !important;
@@ -31,39 +31,36 @@ st.markdown(f"""
         color: #31333f !important;
         -webkit-text-fill-color: #31333f !important;
     }}
-    div[data-testid="stTextInput"] input::placeholder {{
-        color: #31333f !important;
-        opacity: 0.5 !important;
-    }}
 
-    /* 4. EXPANDERS (Menus déroulants) : Forcer le blanc/gris clair */
-    /* On cible l'en-tête et le contenu */
+    /* 4. EXPANDERS : Forcer le blanc */
     div[data-testid="stExpander"] {{
         background-color: white !important;
-        border: 1px solid #f0f2f6 !important;
+        border: none !important;
         border-radius: 8px !important;
     }}
-    
     div[data-testid="stExpander"] summary {{
         background-color: white !important;
         color: #31333f !important;
     }}
-    
-    div[data-testid="stExpander"] summary:hover {{
-        background-color: #f8f9fa !important;
-    }}
 
-    /* 5. BOUTON "Y ALLER" : Rouge clair, texte foncé, sans contour */
-    div.stButton > button {{
+    /* 5. BOUTON "Y ALLER" : Correction spécifique pour st.link_button */
+    /* On cible le bouton et son lien interne */
+    div.stButton > a, div.stButton > button {{
         background-color: #fde8ea !important;
         color: #31333f !important;
         border: none !important;
+        border-radius: 8px !important;
+        text-decoration: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         font-weight: bold !important;
-        width: 100% !important;
-        box-shadow: none !important;
+        padding: 0.5rem !important;
+        transition: background-color 0.3s !important;
     }}
-    
-    div.stButton > button:hover {{
+
+    /* État au survol */
+    div.stButton > a:hover, div.stButton > button:hover {{
         background-color: #fbcfd3 !important;
         color: #31333f !important;
     }}
