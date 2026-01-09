@@ -24,22 +24,24 @@ st.markdown(f"""
     }}
 
     /* Barre de recherche en Gris clair */
-    div[data-testid="stTextInput"] div[data-baseweb="input"] {
+    div[data-testid="stTextInput"] div[data-baseweb="input"] {{
         background-color: #f0f2f6 !important;
         border: 1px solid #dcdfe6 !important;
-    }
-    div[data-testid="stTextInput"] input {
+    }}
+    div[data-testid="stTextInput"] input {{
         background-color: #f0f2f6 !important;
         color: #31333f !important;
-    }
+    }}
 
-    /* Switchs (Toggles) : Gris quand éteint, Rouge quand allumé */
-    div[data-testid="stWidgetLabel"] + div div[role="switch"] {
+    /* Switchs (Toggles) : Gris clair quand éteint */
+    div[data-testid="stWidgetLabel"] + div div[role="switch"] {{
         background-color: #f0f2f6 !important;
-    }
-    div[data-testid="stWidgetLabel"] + div div[aria-checked="true"] {
+    }}
+
+    /* Switch quand il est ACTIVÉ (Rouge) */
+    div[data-testid="stWidgetLabel"] + div div[aria-checked="true"] {{
         background-color: #d92644 !important;
-    }
+    }}
 
     /* Étiquettes (Tags) */
     .tag-label {{
