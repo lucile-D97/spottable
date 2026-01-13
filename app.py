@@ -90,23 +90,6 @@ st.markdown(f"""
 
 st.title("Mes spots")
 
-# 3. Logique de Géolocalisation
-# On place le composant ici, mais le CSS "iframe {display: none;}" s'occupe de cacher son espace blanc
-user_pos = get_geolocation()
-user_layer = None
-
-if user_pos and 'coords' in user_pos:
-    df_user = pd.DataFrame({
-        'lat': [user_pos['coords']['latitude']], 
-        'lon': [user_pos['coords']['longitude']]
-    })
-    user_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=df_user,
-        get_position=["lon", "lat"],
-        get_color=[0, 150, 255, 255], # Bleu pur
-        get_radius=10, # TAILLE TRÈS PETITE
-    )
 
 # 4. Chargement et Traitement des Données
 try:
