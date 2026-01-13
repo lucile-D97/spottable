@@ -10,7 +10,7 @@ st.markdown(f"""
     <style>
     /* Fond de l'application */
     .stApp {{
-        background-color: #efe6d8 !important;
+        background-color: #efede1 !important;
     }}
     
     /* SUPPRESSION DU HEADER */
@@ -50,7 +50,7 @@ st.markdown(f"""
 
     /* Expanders */
     div[data-testid="stExpander"] {{
-        background-color: #f8e6d2 !important;
+        background-color: #efede1 !important;
         border: none !important;
         border-radius: 8px !important;
     }}
@@ -58,7 +58,7 @@ st.markdown(f"""
     /* Bouton Y aller */
     .stLinkButton a {{
         background-color: #7397a3 !important;
-        color: #202b24 !important;
+        color: #efede1 !important;
         border: none !important;
         border-radius: 8px !important;
         font-weight: bold !important;
@@ -69,7 +69,7 @@ st.markdown(f"""
     
     /* Forcer la couleur du texte à l'intérieur du bouton */
     .stLinkButton a span, .stLinkButton a p {{
-        color: #202b24 !important;
+        color: #efede1 !important;
     }}
 
     /* Tags et Toggles */
@@ -83,10 +83,15 @@ st.markdown(f"""
         font-size: 0.75rem;
         font-weight: bold;
     }}
+
+    /* Le bouton rond qui bouge dans le switch */
+    div[data-testid="stWidgetLabel"] + div div[role="switch"] > div:first-child {{
+        background-color: #efede1 !important;
+    }}
     
     /* Rail du switch (Toggles) */
     div[data-testid="stWidgetLabel"] + div div[role="switch"] {{
-        background-color: #91222c !important;
+        background-color: #a39e9b !important;
     }}
     /* Couleur quand activé */
     div[data-testid="stWidgetLabel"] + div div[aria-checked="true"] {{
