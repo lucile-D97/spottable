@@ -31,6 +31,7 @@ st.markdown("""
         font-weight: bold !important; 
         display: flex !important;
         justify-content: center !important;
+        text-decoration: none !important;
     }
     
     .tag-label { display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }
@@ -69,8 +70,8 @@ try:
         df['lon'] = df.apply(lambda r: r['precise_tuple'][1] if r['precise_tuple'][1] else r['lon'], axis=1)
 
     df = df.dropna(subset=['lat', 'lon']).reset_index(drop=True)
-    c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
-    c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
+    c_name = next((c_name for c_name in df.columns if c_name in ['name', 'nom']), df.columns[0])
+    c_addr = next((c_addr for c_addr in df.columns if c_addr in ['address', 'adresse']), df.columns[1])
 
     # --- RECHERCHE ET FILTRES ---
     col_search, _ = st.columns([1, 2])
@@ -95,15 +96,25 @@ try:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        # Configuration propre de l'icône
-        df_filtered['icon_data'] = None
-        for i in df_filtered.index:
-            df_filtered.at[i, 'icon_data'] = {
-                "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
-                "width": 100, "height": 100, "anchorY": 100
-            }
-
+        # Couche de clustering (plus lisible)
         layer = pdk.Layer(
+            "ClusterLayer",
+            data=df_filtered,
+            get_position=["lon", "lat"],
+            cluster_radius=40,
+            pickable=True,
+            auto_highlight=True,
+            highlight_color=[32, 43, 36, 180], # Couleur #202b24 avec transparence
+        )
+
+        # Couche d'icônes (quand on est assez proche)
+        icon_data = {
+            "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
+            "width": 100, "height": 100, "anchorY": 100
+        }
+        df_filtered['icon_data'] = [icon_data] * len(df_filtered)
+
+        icon_layer = pdk.Layer(
             "IconLayer",
             data=df_filtered,
             get_icon="icon_data",
@@ -111,13 +122,14 @@ try:
             size_scale=10,
             get_position=["lon", "lat"],
             pickable=True,
-            auto_highlight=True
+            auto_highlight=True,
+            highlight_color=[32, 43, 36, 180], # Couleur #202b24 au survol
         )
 
         st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
             initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12),
-            layers=[layer],
+            layers=[icon_layer] if len(df_filtered) < 100 else [layer, icon_layer],
             tooltip={
                 "html": f"<b>{{{c_name}}}</b>",
                 "style": {"backgroundColor": "#efede1", "color": "#202b24"}
