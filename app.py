@@ -14,16 +14,42 @@ st.markdown(f"""
     header[data-testid="stHeader"] {{ display: none !important; }}
     div[data-testid="stDecoration"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
+
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
-    div[data-testid="stExpander"] {{ background-color: #efede1 !important; border: 0.25px solid #b6beb1 !important; border-radius: 8px !important; margin-bottom: 10px !important; }}
+
+    /* Expanders */
+    div[data-testid="stExpander"] {{
+        background-color: #efede1 !important;
+        border: 0.5px solid #b6beb1 !important;
+        border-radius: 8px !important;
+        margin-bottom: 10px !important;
+    }}
     div[data-testid="stExpander"] summary:hover {{ background-color: #b6beb1 !important; }}
-    div[data-testid="stExpander"] details[open] summary {{ background-color: #b6beb1 !important; border-bottom: 1px solid #b6beb1 !important; }}
+    div[data-testid="stExpander"] details[open] summary {{
+        background-color: #b6beb1 !important;
+        border-bottom: 1px solid #b6beb1 !important;
+    }}
+
+    /* Switch */
     div[role="switch"] {{ background-color: #b6beb1 !important; }}
     div[aria-checked="true"][role="switch"] {{ background-color: #d92644 !important; }}
     div[role="switch"] > div:last-child {{ background-color: #efede1 !important; box-shadow: none !important; }}
+
+    /* Recherche */
     div[data-testid="stTextInput"] div[data-baseweb="input"] {{ background-color: #b6beb1 !important; border: none !important; }}
-    .stLinkButton a {{ background-color: #7397a3 !important; color: #efede1 !important; border: none !important; border-radius: 8px !important; font-weight: bold !important; display: flex !important; justify-content: center !important; }}
+    div[data-testid="stTextInput"] input {{ color: #202b24 !important; -webkit-text-fill-color: #202b24 !important; }}
+
+    .stLinkButton a {{ 
+        background-color: #7397a3 !important; 
+        color: #efede1 !important; 
+        border: none !important; 
+        border-radius: 8px !important; 
+        font-weight: bold !important; 
+        text-decoration: none !important;
+        display: flex !important;
+        justify-content: center !important;
+    }}
     .tag-label {{ display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }}
     </style>
     """, unsafe_allow_html=True)
@@ -75,7 +101,7 @@ try:
         if selected_tags:
             df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
 
-    # --- AFFICHAGE CARTE ---
+    # --- AFFICHAGE ---
     col1, col2 = st.columns([2, 1])
 
     with col1:
@@ -89,26 +115,37 @@ try:
         }
         df_filtered["icon_data"] = [icon_config for _ in range(len(df_filtered))]
 
-        # Utilisation simplifiée de l'extension de collision
         layer = pdk.Layer(
             "IconLayer",
             data=df_filtered,
             get_icon="icon_data",
-            get_size=2.5,        # Encore un peu plus petit pour la clarté
+            get_size=2.5,
             size_scale=8,
             get_position=["lon", "lat"],
             pickable=True,
-            opacity=0.9,
-            # Paramètres de collision simplifiés
             collision_enabled=True,
             collision_group="spots"
         )
+
+        # CONFIGURATION DU TOOLTIP PERSONNALISÉ
+        tooltip_style = {
+            "html": f"<b>{{{{ {c_name} }}}}</b>", # Affiche le nom en gras
+            "style": {
+                "backgroundColor": "#b6beb1",
+                "color": "#202b24",
+                "fontFamily": "sans-serif",
+                "fontSize": "12px",
+                "padding": "10px",
+                "borderRadius": "8px",
+                "border": "1px solid #b6beb1"
+            }
+        }
 
         st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
             initial_view_state=view_state,
             layers=[layer],
-            tooltip={"text": "{"+c_name+"}"}
+            tooltip=tooltip_style
         ))
 
     with col2:
