@@ -9,7 +9,7 @@ st.set_page_config(page_title="Mes spots", layout="wide")
 # Fonction pour réinitialiser tous les filtres
 def reset_filters():
     st.session_state.search_input = ""
-    for key in st.session_state.keys():
+    for key in list(st.session_state.keys()):
         if key.startswith("toggle_"):
             st.session_state[key] = False
 
@@ -24,8 +24,38 @@ st.markdown("""
     html, body, [class*="st-"], p, div, span, label, h3 { color: #202b24 !important; }
 
     /* FILTRES TAGS RESSERRÉS */
-    [data-testid="stExpander"] { border: none !important; box-shadow: none !important; }
     div[data-testid="stCheckbox"] { margin-bottom: -15px !important; }
+
+    /* BARRE DE RECHERCHE AVEC LOUPE À GAUCHE */
+    div[data-testid="stTextInput"] div[data-baseweb="input"] { 
+        background-color: #b6beb1 !important; 
+        border: none !important; 
+        border-radius: 4px !important;
+    }
+    div[data-testid="stTextInput"] input {
+        padding-left: 40px !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23B6BEB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+        background-repeat: no-repeat;
+        background-position: 12px center;
+    }
+    .stTextInput p { display: none !important; } 
+
+    /* BOUTON RESET : TEXTE UNIQUEMENT */
+    div[data-testid="column"] button[kind="secondary"] {
+        background: none !important;
+        border: none !important;
+        padding: 0 !important;
+        color: #202b24 !important;
+        font-weight: bold !important;
+        box-shadow: none !important;
+        display: block !important;
+        margin-left: auto !important;
+        text-decoration: none !important;
+    }
+    div[data-testid="column"] button[kind="secondary"]:hover {
+        color: #d92644 !important;
+        background: none !important;
+    }
 
     /* DESIGN DES CARTES */
     .spot-title { 
@@ -50,16 +80,16 @@ st.markdown("""
         font-weight: bold; 
     }
     
-    /* BOUTON GO ULTRA COMPACT */
+    /* BOUTON GO RECTANGLE HORIZONTAL */
     .stLinkButton a { 
         background-color: #7397a3 !important; 
         color: #efede1 !important; 
         border-radius: 4px !important; 
         font-weight: bold !important; 
-        padding: 0px 6px !important; 
+        padding: 0px 12px !important; 
         font-size: 0.7rem !important;
         text-decoration: none !important;
-        height: 20px !important;
+        height: 18px !important;
         display: inline-flex !important;
         align-items: center !important;
         border: none !important;
@@ -67,21 +97,6 @@ st.markdown("""
     .stLinkButton a:hover {
         background-color: #b6beb1 !important;
         color: #202b24 !important;
-    }
-
-    /* BARRE DE RECHERCHE & RESET */
-    div[data-testid="stTextInput"] div[data-baseweb="input"] { background-color: #b6beb1 !important; border: none !important; }
-    .stTextInput p { display: none !important; } /* Cache "Press Enter" */
-    
-    .reset-btn {
-        background: none !important;
-        border: none !important;
-        padding: 0 !important;
-        color: #202b24 !important;
-        text-decoration: none !important;
-        cursor: pointer;
-        font-weight: bold !important;
-        font-size: 0.85rem !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -104,27 +119,21 @@ try:
     c_name = next((cn for cn in df.columns if cn in ['name', 'nom']), df.columns[0])
     c_addr = next((ca for ca in df.columns if ca in ['address', 'adresse']), df.columns[1])
 
-    st.title("Mes spots")
-
-    # --- BARRE DE RECHERCHE ET RESET ---
-    c_search, c_loupe, c_reset = st.columns([1, 0.05, 0.4])
-    with c_search:
-        search_query = st.text_input("Rechercher", placeholder="Nom du spot...", key="search_input", label_visibility="collapsed")
-    with c_loupe:
-        st.write("###")
-        st.write("🔍")
-    with c_reset:
-        st.write("###")
-        if st.button("TOUT RÉINITIALISER", on_click=reset_filters, use_container_width=False):
-            pass
-
-    df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
-
-    # --- LAYOUT : CARTE vs FILTRES ---
+    # --- LAYOUT : CARTE vs FILTRES (AVEC RECHERCHE À DROITE) ---
     col_map, col_filters = st.columns([1.6, 1.4])
 
     with col_filters:
         st.write("### Filtrer")
+        
+        # Barre de recherche et Bouton Reset sur la même ligne
+        c_search_ui, c_reset_ui = st.columns([1, 0.6])
+        with c_search_ui:
+            search_query = st.text_input("Rechercher", placeholder="Nom du spot...", key="search_input", label_visibility="collapsed")
+        with c_reset_ui:
+            st.button("TOUT RÉINITIALISER", on_click=reset_filters)
+
+        df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
+
         if col_tags:
             all_tags = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
             t_subcols = st.columns(4)
@@ -154,9 +163,12 @@ try:
 
     # --- GRILLE DE CARTES ---
     st.markdown("---")
+    st.write(f"### {len(df_filtered)} spots trouvés")
+    
     n_cols = 4
     for i in range(0, len(df_filtered.head(100)), n_cols):
         grid_cols = st.columns(n_cols)
+        # On itère sur les spots de la ligne actuelle
         for j, (idx, row) in enumerate(df_filtered.iloc[i:i+n_cols].iterrows()):
             with grid_cols[j]:
                 with st.container(border=True):
