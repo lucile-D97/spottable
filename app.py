@@ -6,15 +6,6 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# Initialisation du centrage de la carte pour éviter les sauts au clic
-if 'view_state' not in st.session_state:
-    st.session_state.view_state = pdk.ViewState(
-        latitude=48.8566, 
-        longitude=2.3522, 
-        zoom=12, 
-        pitch=0
-    )
-
 # 2. Style CSS
 st.markdown(f"""
     <style>
@@ -22,9 +13,6 @@ st.markdown(f"""
     header[data-testid="stHeader"] {{ display: none !important; }}
     div[data-testid="stDecoration"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
-
-    /* Curseur pointer sur la carte */
-    .deckgl-wrapper, .deckgl-overlay {{ cursor: pointer !important; }}
 
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
@@ -41,7 +29,6 @@ st.markdown(f"""
         color: #efede1 !important; 
         border-radius: 8px !important; 
         font-weight: bold !important; 
-        text-decoration: none !important;
         display: flex !important;
         justify-content: center !important;
     }}
@@ -86,13 +73,9 @@ try:
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
     # --- RECHERCHE ET FILTRES ---
-    col_search, col_reset = st.columns([3, 1])
+    col_search, _ = st.columns([1, 2])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
-    with col_reset:
-        if st.button("Paris ↺", use_container_width=True):
-            st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12)
-            st.rerun()
     
     df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
@@ -112,44 +95,36 @@ try:
     col1, col2 = st.columns([2, 1])
 
     with col1:
+        # Retour à l'IconLayer pour les pins
         layer = pdk.Layer(
-            "ScatterplotLayer",
+            "IconLayer",
             data=df_filtered,
+            get_icon="""{
+                "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
+                "width": 100,
+                "height": 100,
+                "anchorY": 100
+            }""",
+            get_size=4,
+            size_scale=10,
             get_position=["lon", "lat"],
-            get_color=[217, 38, 68, 200], 
-            get_radius=80, 
             pickable=True,
-            auto_highlight=True,
-            highlight_color=[0, 0, 0, 255]
+            auto_highlight=True # Effet de survol foncé
         )
 
-        map_selection = st.pydeck_chart(pdk.Deck(
+        st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-            initial_view_state=st.session_state.view_state,
+            initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12),
             layers=[layer],
             tooltip={
                 "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
-                "style": {"backgroundColor": "#efede1", "color": "#202b24", "fontSize": "14px", "padding": "10px", "borderRadius": "8px", "boxShadow": "0px 2px 6px rgba(0,0,0,0.1)"}
+                "style": {"backgroundColor": "#efede1", "color": "#202b24", "fontSize": "14px", "padding": "10px", "borderRadius": "8px"}
             }
-        ), on_select="rerun", selection_mode="single-object")
-
-    # --- ACTION AU CLIC : POP-UP ---
-    selected = map_selection.selection.get("objects", [])
-    if selected:
-        @st.dialog("Détails du spot")
-        def show_details(spot):
-            st.write(f"### {spot[c_name]}")
-            st.write(f"📍 {spot[c_addr]}")
-            if c_link and pd.notna(spot[c_link]):
-                st.link_button("Ouvrir dans Google Maps", spot[c_link], use_container_width=True)
-            if st.button("Fermer"):
-                # On réinitialise la sélection au clic sur fermer
-                st.rerun()
-        
-        show_details(selected[0])
+        ))
 
     with col2:
-        st.write(f"*{len(df_filtered)} spots trouvés (Top 50)*")
+        st.write(f"*{len(df_filtered)} spots trouvés*")
+        # Affichage simple des expanders sans logique de clic bloquante
         for _, row in df_filtered.head(50).iterrows():
             with st.expander(f"**{row[c_name]}**"):
                 st.write(f"📍 {row[c_addr]}")
