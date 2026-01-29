@@ -6,49 +6,24 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# Initialisation de la vue
+# Initialisation des variables d'état (Session State)
 if 'view_state' not in st.session_state:
     st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
+if 'selected_spot' not in st.session_state:
+    st.session_state.selected_spot = None
 
-# 2. Style CSS (Injection de force pour le curseur)
+# 2. Style CSS
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
     header[data-testid="stHeader"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
-
-    /* FORCE LE CURSEUR POINTER SUR LA CARTE ET SON CONTENEUR */
-    [data-testid="stDeckGlChart"] {{
-        cursor: pointer !important;
-    }}
-    .deckgl-wrapper, .deckgl-overlay, canvas {{
-        cursor: pointer !important;
-    }}
-
+    .deckgl-wrapper {{ cursor: pointer !important; }}
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
-
-    div[data-testid="stExpander"] {{
-        background-color: #efede1 !important;
-        border: 0.5px solid #b6beb1 !important;
-        border-radius: 8px !important;
-        margin-bottom: 10px !important;
-    }}
-    
-    .stLinkButton a {{ 
-        background-color: #7397a3 !important; 
-        color: #efede1 !important; 
-        border-radius: 8px !important; 
-        font-weight: bold !important; 
-        text-decoration: none !important;
-        display: flex !important;
-        justify-content: center !important;
-    }}
-    
+    div[data-testid="stExpander"] {{ background-color: #efede1 !important; border: 0.5px solid #b6beb1 !important; border-radius: 8px !important; margin-bottom: 10px !important; }}
+    .stLinkButton a {{ background-color: #7397a3 !important; color: #efede1 !important; border-radius: 8px !important; font-weight: bold !important; display: flex !important; justify-content: center !important; }}
     .tag-label {{ display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }}
-    div[data-testid="stTextInput"] div[data-baseweb="input"] {{ background-color: #b6beb1 !important; border: none !important; }}
-    div[role="switch"] {{ background-color: #b6beb1 !important; }}
-    div[aria-checked="true"][role="switch"] {{ background-color: #d92644 !important; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -104,7 +79,6 @@ try:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        # On utilise le ScatterplotLayer qui est reconnu (le point devient noir)
         layer = pdk.Layer(
             "ScatterplotLayer",
             data=df_filtered,
@@ -113,25 +87,26 @@ try:
             get_radius=80, 
             pickable=True,
             auto_highlight=True, 
-            highlight_color=[0, 0, 0, 255] # Devient noir au survol comme vous l'avez vu
+            highlight_color=[0, 0, 0, 255]
         )
 
-        map_selection = st.pydeck_chart(pdk.Deck(
+        map_deck = st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
             initial_view_state=st.session_state.view_state,
             layers=[layer],
             tooltip={
                 "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
-                "style": {"backgroundColor": "#efede1", "color": "#202b24", "fontSize": "14px", "padding": "10px", "borderRadius": "8px", "boxShadow": "0px 2px 6px rgba(0,0,0,0.1)"}
+                "style": {"backgroundColor": "#efede1", "color": "#202b24", "fontSize": "14px", "padding": "10px", "borderRadius": "8px"}
             }
         ), on_select="rerun", selection_mode="single-object")
 
     with col2:
-        selected_objects = map_selection.selection.get("objects", [])
+        # On extrait l'objet cliqué depuis la sélection de la carte
+        selection = map_deck.selection.get("objects", [])
         
-        if selected_objects:
-            clicked_spot = selected_objects[0]
-            # ON MISE A JOUR LE ZOOM ICI
+        if selection:
+            clicked_spot = selection[0]
+            # On force la mise à jour de la vue pour le centrage/zoom
             st.session_state.view_state = pdk.ViewState(
                 latitude=clicked_spot['lat'], 
                 longitude=clicked_spot['lon'], 
@@ -148,7 +123,7 @@ try:
             st.write(f"*{len(df_filtered)} spots trouvés (Top 50)*")
 
         for _, row in df_display.iterrows():
-            with st.expander(f"**{row[c_name]}**", expanded=len(selected_objects) > 0):
+            with st.expander(f"**{row[c_name]}**", expanded=len(selection) > 0):
                 st.write(f"📍 {row[c_addr]}")
                 if col_tags and pd.notna(row[col_tags]):
                     tags_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
