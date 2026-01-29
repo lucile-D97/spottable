@@ -115,4 +115,43 @@ try:
         # CENTRAGE FIXE SUR PARIS
         view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
 
-        # Correction de la couche IconLayer (Supp
+        # Correction de la couche IconLayer (Suppression de l'erreur JSON)
+        icon_data = {
+            "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
+            "width": 100,
+            "height": 100,
+            "anchorY": 100
+        }
+        df_filtered["icon_data"] = [icon_data for _ in range(len(df_filtered))]
+
+        layer = pdk.Layer(
+            "IconLayer",
+            data=df_filtered,
+            get_icon="icon_data",
+            get_size=4,
+            size_scale=10,
+            get_position=["lon", "lat"],
+            pickable=True,
+            opacity=0.8
+        )
+
+        st.pydeck_chart(pdk.Deck(
+            map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+            initial_view_state=view_state,
+            layers=[layer],
+            tooltip={"text": "{"+c_name+"}"}
+        ))
+
+    with col2:
+        st.write(f"*{len(df_filtered)} spots trouvés (Top 50)*")
+        for _, row in df_filtered.head(50).iterrows():
+            with st.expander(f"**{row[c_name]}**"):
+                st.write(f"📍 {row[c_addr]}")
+                if col_tags and pd.notna(row[col_tags]):
+                    tags = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
+                    st.markdown(tags, unsafe_allow_html=True)
+                if c_link and pd.notna(row[row[c_link]]): # Petite sécurité sur le lien
+                    st.link_button("**Y aller**", row[c_link], use_container_width=True)
+
+except Exception as e:
+    st.error(f"Erreur : {e}")
