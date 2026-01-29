@@ -45,7 +45,7 @@ st.markdown("""
         font-weight: bold !important;
         color: #202b24 !important;
         text-decoration: none !important;
-        font-size: 0.95rem !important; 
+        font-size: 0.85rem !important; 
         display: block;
         text-align: right;
         margin-top: 10px;
@@ -59,10 +59,10 @@ st.markdown("""
         background-color: #efede1 !important;
         border: 1px solid #b6beb1 !important;
         border-radius: 8px !important;
-        padding: 18px !important;
+        padding: 15px !important;
     }
 
-    .spot-title { color: #d92644; font-weight: bold; font-size: 0.95rem; line-height: 1.1; }
+    .spot-title { color: #d92644; font-weight: bold; font-size: 0.95rem; line-height: 1.1; margin-bottom: 4px; }
     .spot-addr { font-size: 0.72rem; color: #202b24; opacity: 0.8; line-height: 1.2; }
     
     .tag-label { 
@@ -70,7 +70,7 @@ st.markdown("""
         border-radius: 10px; margin-right: 3px; margin-bottom: 3px; font-size: 0.58rem; font-weight: bold; 
     }
     
-    /* BOUTON GO AVEC EFFET SURVOL RÉTABLI */
+    /* BOUTON GO */
     .stLinkButton a { 
         background-color: #7397a3 !important; 
         color: #efede1 !important; 
@@ -88,6 +88,13 @@ st.markdown("""
     .stLinkButton a:hover {
         background-color: #b6beb1 !important;
         color: #202b24 !important;
+    }
+
+    /* Centre verticalement le contenu de la colonne bouton */
+    [data-testid="column"] {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -111,7 +118,7 @@ try:
     c_name = next((cn for cn in df.columns if cn in ['name', 'nom']), df.columns[0])
     c_addr = next((ca for ca in df.columns if ca in ['address', 'adresse']), df.columns[1])
 
-    # --- LAYOUT ---
+    # --- LAYOUT DU HAUT ---
     col_map, col_filters = st.columns([1.6, 1.4])
 
     with col_filters:
@@ -151,7 +158,7 @@ try:
             tooltip={"html": f"<b>{{{c_name}}}</b>", "style": {"backgroundColor": "#efede1", "color": "#202b24"}}
         ))
 
-    # --- GRILLE ---
+    # --- GRILLE DE SPOTS ---
     st.markdown("---")
     st.write(f"### {len(df_filtered)} spots trouvés")
     
@@ -161,23 +168,24 @@ try:
         for j, (idx, row) in enumerate(df_filtered.iloc[i:i+n_cols].iterrows()):
             with grid_cols[j]:
                 with st.container(border=True):
-                    h_col, b_col = st.columns([3.2, 1])
-                    with h_col:
+                    # DEUX COLONNES DANS LA CARTE : Texte à gauche (4), Bouton à droite (1)
+                    txt_col, btn_col = st.columns([4, 1])
+                    
+                    with txt_col:
+                        # 1. Nom
                         st.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
-                    with b_col:
+                        # 2. Adresse (resserrée sous le nom)
+                        st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
+                        # 3. Tags (en bas du bloc texte)
+                        if col_tags and pd.notna(row[col_tags]):
+                            st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+                            t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
+                            st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
+                    
+                    with btn_col:
+                        # Bouton Go centré verticalement par le CSS
                         if c_link and pd.notna(row[c_link]):
                             st.link_button("Go", row[c_link])
-                    
-                    # 1. ADRESSE (juste après le nom)
-                    st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
-                    st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
-                    
-                    # 2. TAGS (en dernier)
-                    st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-                    if col_tags and pd.notna(row[col_tags]):
-                        t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
-                        st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
 
 except Exception as e:
     st.error(f"Erreur : {e}")
-    
