@@ -5,47 +5,48 @@ import re
 
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# 1. CSS mis à jour pour le mini bouton +
+# CSS : Styles, Tags et Mini-bouton +
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
     header[data-testid="stHeader"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
     
-    .deckgl-wrapper {{ cursor: pointer !important; }}
-
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
     
     div[data-testid="stExpander"] {{
         background-color: #efede1 !important;
-        border: 0.25px solid #b6beb1 !important;
+        border: 0.5px solid #b6beb1 !important;
         border-radius: 8px !important;
+        margin-bottom: 10px !important;
     }}
     
-    /* Style du mini bouton + */
     .stLinkButton a {{ 
         background-color: #7397a3 !important; 
         color: #efede1 !important; 
-        border-radius: 50% !important; /* Rend le bouton circulaire */
-        width: 35px !important;
-        height: 35px !important;
+        border-radius: 50% !important;
+        width: 32px !important;
+        height: 32px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        font-size: 20px !important;
+        font-size: 18px !important;
         font-weight: bold !important; 
         text-decoration: none !important;
-        margin: 10px 0 !important;
-        padding: 0 !important;
-        line-height: 0 !important;
     }}
-    .stLinkButton a:hover {{
-        background-color: #d92644 !important; /* Change en rouge au survol */
-        color: white !important;
-    }}
+    .stLinkButton a:hover {{ background-color: #d92644 !important; }}
 
-    .tag-label {{ display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }}
+    .tag-label {{ 
+        display: inline-block; 
+        background-color: #b6beb1; 
+        color: #202b24; 
+        padding: 2px 10px; 
+        border-radius: 15px; 
+        margin-right: 5px; 
+        font-size: 0.75rem; 
+        font-weight: bold; 
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -79,13 +80,9 @@ try:
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
-    # --- RECHERCHE ET FILTRES ---
-    col_search, _ = st.columns([1, 2])
-    with col_search:
-        search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
-    df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
-
-    st.write("### Filtrer")
+    # --- FILTRES TAGS ---
+    st.write("### Filtrer par catégorie")
+    df_filtered = df.copy()
     if col_tags:
         all_tags = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
         t_cols = st.columns(6)
@@ -97,11 +94,31 @@ try:
         if selected_tags:
             df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
 
+    # --- RECHERCHE ET SÉLECTION PRÉCISE ---
+    col_search, col_select = st.columns([1, 1])
+    with col_search:
+        search_query = st.text_input("Rechercher un nom", placeholder="Ex: Café de Flore", label_visibility="collapsed")
+        if search_query:
+            df_filtered = df_filtered[df_filtered[c_name].str.contains(search_query, case=False, na=False)]
+
+    with col_select:
+        # LISTE DÉROULANTE POUR SÉLECTIONNER UN PIN PRÉCIS
+        options = ["Tous les spots visibles"] + sorted(df_filtered[c_name].tolist())
+        selected_spot_name = st.selectbox("Sélectionner un spot sur la carte", options, label_visibility="collapsed")
+
     # --- AFFICHAGE ---
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        initial_view = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
+        # Centrage dynamique : si un spot est choisi, on centre sur lui, sinon sur Paris
+        if selected_spot_name != "Tous les spots visibles":
+            row_sel = df_filtered[df_filtered[c_name] == selected_spot_name].iloc[0]
+            v_lat, v_lon, v_zoom = row_sel['lat'], row_sel['lon'], 16
+        else:
+            v_lat, v_lon, v_zoom = 48.8566, 2.3522, 12
+
+        view_state = pdk.ViewState(latitude=v_lat, longitude=v_lon, zoom=v_zoom, pitch=0)
+        
         icon_config = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
         df_filtered["icon_data"] = [icon_config for _ in range(len(df_filtered))]
 
@@ -109,42 +126,35 @@ try:
             "IconLayer",
             data=df_filtered,
             get_icon="icon_data",
-            get_size=2.5,
-            size_scale=8,
+            get_size=3,
+            size_scale=10,
             get_position=["lon", "lat"],
             pickable=True,
-            collision_enabled=True,
         )
 
         st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-            initial_view_state=initial_view,
+            initial_view_state=view_state,
             layers=[layer],
-            tooltip={
-                "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
-                "style": {
-                    "backgroundColor": "#efede1",
-                    "color": "#202b24",
-                    "fontFamily": "sans-serif",
-                    "fontSize": "13px",
-                    "padding": "10px",
-                    "borderRadius": "8px",
-                    "boxShadow": "0px 2px 6px rgba(0,0,0,0.1)"
-                }
-            }
+            tooltip={"html": f"<b>{{{c_name}}}</b>", "style": {"backgroundColor": "#efede1", "color": "#202b24"}}
         ))
 
     with col2:
-        st.write(f"*{len(df_filtered)} spots trouvés (Top 50)*")
-        for _, row in df_filtered.head(50).iterrows():
-            with st.expander(f"**{row[c_name]}**"):
+        # Affichage du résultat
+        if selected_spot_name != "Tous les spots visibles":
+            df_display = df_filtered[df_filtered[c_name] == selected_spot_name]
+        else:
+            df_display = df_filtered.head(50)
+            st.write(f"*{len(df_filtered)} spots trouvés*")
+
+        for _, row in df_display.iterrows():
+            with st.expander(f"**{row[c_name]}**", expanded=True):
                 st.write(f"📍 {row[c_addr]}")
                 if col_tags and pd.notna(row[col_tags]):
                     tags_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
                     st.markdown(tags_html, unsafe_allow_html=True)
-                
-                # Le mini bouton +
                 if c_link and pd.notna(row[c_link]):
+                    st.write("")
                     st.link_button("+", row[c_link])
 
 except Exception as e:
