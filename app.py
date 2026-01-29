@@ -8,7 +8,7 @@ st.set_page_config(page_title="Mes spots", layout="wide")
 
 def reset_filters():
     st.session_state.search_input = ""
-    for key in st.session_state.keys():
+    for key in list(st.session_state.keys()):
         if key.startswith("toggle_"):
             st.session_state[key] = False
 
@@ -31,7 +31,7 @@ st.markdown("""
     }
     div[data-testid="stTextInput"] input {
         padding-left: 40px !important;
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23B6BEB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23B6BEB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
         background-repeat: no-repeat;
         background-position: 12px center;
     }
@@ -51,10 +51,9 @@ st.markdown("""
         border: 1px solid #b6beb1 !important;
         padding: 12px !important;
         border-radius: 8px !important;
-        height: 100% !important;
     }
     .spot-title { color: #d92644; font-weight: bold; font-size: 0.9rem; line-height: 1.1; margin: 0; }
-    .tag-container { margin: 6px 0; line-height: 1; }
+    .tag-container { margin: 6px 0 !important; line-height: 1; }
     .tag-label { 
         display: inline-block; background-color: #b6beb1; color: #202b24; padding: 1px 6px; 
         border-radius: 10px; margin-right: 3px; margin-bottom: 3px; font-size: 0.55rem; font-weight: bold; 
@@ -124,32 +123,31 @@ try:
             tooltip={"html": f"<b>{{{c_name}}}</b>", "style": {"backgroundColor": "#efede1", "color": "#202b24"}}
         ))
 
-    # --- GRILLE DE CARTES EN 4 COLONNES ---
+    # --- GRILLE DE SPOTS 4 COLONNES (Méthode 100% stable) ---
     st.markdown("---")
     st.write(f"### {len(df_filtered)} spots trouvés")
     
-    n_cols = 4
-    # On itère sur les spots en créant de nouvelles colonnes toutes les 4 itérations
-    for i in range(0, len(df_filtered.head(100)), n_cols):
-        cols = st.columns(n_cols)
-        # On prend un groupe de 4 spots (ou moins pour la dernière ligne)
-        chunk = df_filtered.iloc[i : i + n_cols]
-        for index, (_, row) in enumerate(chunk.iterrows()):
-            with cols[index]:
-                with st.container(border=True):
-                    # Ligne Titre + Go
-                    c1, c2 = st.columns([3, 1])
-                    c1.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
-                    if c_link and pd.notna(row[c_link]):
-                        c2.link_button("Go", row[c_link])
-                    
-                    # Tags avant l'adresse
-                    if col_tags and pd.notna(row[col_tags]):
-                        t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
-                        st.markdown(f"<div class='tag-container'>{t_html}</div>", unsafe_allow_html=True)
-                    
-                    # Adresse
-                    st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
+    # On crée les colonnes une seule fois
+    cols = st.columns(4)
+    
+    # On distribue les spots dans les 4 colonnes
+    for index, row in df_filtered.head(100).iterrows():
+        # L'opérateur % 4 permet de boucler sur les colonnes 0, 1, 2, 3
+        with cols[index % 4]:
+            with st.container(border=True):
+                # Header : Titre + Go
+                h1, h2 = st.columns([3, 1])
+                h1.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
+                if c_link and pd.notna(row[c_link]):
+                    h2.link_button("Go", row[c_link])
+                
+                # Tags remontés
+                if col_tags and pd.notna(row[col_tags]):
+                    t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
+                    st.markdown(f"<div class='tag-container'>{t_html}</div>", unsafe_allow_html=True)
+                
+                # Adresse
+                st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
 
 except Exception as e:
     st.error(f"Erreur : {e}")
