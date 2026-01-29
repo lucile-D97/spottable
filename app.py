@@ -6,14 +6,14 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# Fonction de réinitialisation
+# Fonction de réinitialisation des filtres
 def reset_filters():
     st.session_state.search_input = ""
     for key in st.session_state.keys():
         if key.startswith("toggle_"):
             st.session_state[key] = False
 
-# 2. Style CSS
+# 2. Style CSS (Loupe, Reset texte, Cartes et Bouton Go)
 st.markdown("""
     <style>
     .stApp { background-color: #efede1 !important; }
@@ -31,38 +31,31 @@ st.markdown("""
         background-color: #b6beb1 !important; 
         border: none !important; 
         border-radius: 4px !important;
-        padding-left: 10px !important;
     }
-    /* Simulation de la loupe via le background de l'input */
     div[data-testid="stTextInput"] input {
-        padding-left: 35px !important;
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23B6BEB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+        padding-left: 40px !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23B6BEB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
         background-repeat: no-repeat;
-        background-position: 10px center;
+        background-position: 12px center;
     }
     .stTextInput p { display: none !important; } 
 
-    /* BOUTON RESET : TEXTE CLIQUABLE UNIQUEMENT */
+    /* BOUTON RESET : TEXTE UNIQUEMENT */
     div[data-testid="column"] button[kind="secondary"] {
         background: none !important;
         border: none !important;
         padding: 0 !important;
         color: #202b24 !important;
         font-weight: bold !important;
-        text-decoration: none !important;
         box-shadow: none !important;
-        transition: color 0.2s;
-        text-align: right !important;
-        width: auto !important;
         display: block !important;
         margin-left: auto !important;
     }
     div[data-testid="column"] button[kind="secondary"]:hover {
         color: #d92644 !important;
-        background: none !important;
     }
 
-    /* DESIGN DES CARTES (CARDS) */
+    /* DESIGN DES CARTES */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #efede1 !important;
         border: 1px solid #b6beb1 !important;
@@ -78,6 +71,7 @@ st.markdown("""
     }
     .spot-addr { font-size: 0.75rem; color: #202b24; margin-top: 8px !important; opacity: 0.8; line-height: 1.2; }
     
+    /* BOUTON GO RECTANGLE */
     .stLinkButton a { 
         background-color: #7397a3 !important; color: #efede1 !important; border-radius: 4px !important; 
         font-weight: bold !important; padding: 0px 15px !important; font-size: 0.7rem !important;
@@ -89,13 +83,16 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 try:
+    # 3. Chargement des données
     df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
     lat_col = next((c for c in df.columns if 'lat' in c), 'lat')
     lon_col = next((c for c in df.columns if 'lon' in c), 'lon')
+    
     df[lat_col] = pd.to_numeric(df[lat_col].astype(str).str.replace(',', '.'), errors='coerce')
     df[lon_col] = pd.to_numeric(df[lon_col].astype(str).str.replace(',', '.'), errors='coerce')
+    
     df = df.dropna(subset=[lat_col, lon_col]).reset_index(drop=True)
 
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
@@ -105,15 +102,12 @@ try:
 
     st.title("Mes spots")
 
+    # --- FILTRES ET CARTE ---
     col_map, col_filters = st.columns([1.6, 1.4])
 
     with col_filters:
         st.write("### Filtrer")
-        
-        # Barre de recherche avec icône intégrée à gauche via CSS
         search_query = st.text_input("Rechercher", placeholder="Nom du spot...", key="search_input", label_visibility="collapsed")
-        
-        # Bouton Reset (Texte cliquable uniquement via CSS)
         st.button("TOUT RÉINITIALISER", on_click=reset_filters)
 
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
@@ -131,24 +125,28 @@ try:
                 df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
 
     with col_map:
-        df_filtered['icon_data'] = [{"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}] * len(df_filtered)
-
-        icon_layer = pdk.Layer(
-            "IconLayer", data=df_filtered, get_icon="icon_data", get_size=4, size_scale=10,
-            get_position=[lon_col, lat_col], pickable=True, auto_highlight=True, highlight_color=[182, 190, 177, 200]
-        )
-        cluster_layer = pdk.Layer(
-            "ClusterLayer", data=df_filtered, get_position=[lon_col, lat_col], cluster_radius=50,
-            get_fill_color=[217, 38, 68, 200], pickable=True
-        )
+        # On revient à la méthode de l'IconLayer simple qui fonctionnait
+        icon_data = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
+        df_filtered['icon_data'] = [icon_data] * len(df_filtered)
 
         st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
             initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12),
-            layers=[cluster_layer] if len(df_filtered) > 150 else [icon_layer],
+            layers=[pdk.Layer(
+                "IconLayer",
+                data=df_filtered,
+                get_icon="icon_data",
+                get_size=4,
+                size_scale=10,
+                get_position=[lon_col, lat_col],
+                pickable=True,
+                auto_highlight=True,
+                highlight_color=[182, 190, 177, 200]
+            )],
             tooltip={"html": f"<b>{{{c_name}}}</b>", "style": {"backgroundColor": "#efede1", "color": "#202b24"}}
         ))
 
+    # --- GRILLE DE SPOTS ---
     st.markdown("---")
     st.write(f"### {len(df_filtered)} spots trouvés")
     
