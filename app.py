@@ -20,13 +20,14 @@ st.markdown("""
     header[data-testid="stHeader"], div[data-testid="stDecoration"] { display: none !important; }
     .main .block-container { padding-top: 2rem !important; }
 
-    h1 { color: #d92644 !important; margin-top: -30px !important; }
+    /* TITRE */
+    h1 { color: #d92644 !important; margin-bottom: 20px !important; }
     html, body, [class*="st-"], p, div, span, label, h3 { color: #202b24 !important; }
 
     /* FILTRES TAGS RESSERRÉS */
     div[data-testid="stCheckbox"] { margin-bottom: -15px !important; }
 
-    /* BARRE DE RECHERCHE AVEC LOUPE À GAUCHE */
+    /* BARRE DE RECHERCHE AVEC LOUPE */
     div[data-testid="stTextInput"] div[data-baseweb="input"] { 
         background-color: #b6beb1 !important; 
         border: none !important; 
@@ -40,30 +41,37 @@ st.markdown("""
     }
     .stTextInput p { display: none !important; } 
 
-    /* BOUTON RESET : TEXTE UNIQUEMENT */
+    /* BOUTON RESET : ASPECT TEXTE TAGS */
     div[data-testid="column"] button[kind="secondary"] {
         background: none !important;
         border: none !important;
         padding: 0 !important;
         color: #202b24 !important;
         font-weight: bold !important;
+        font-size: 0.58rem !important; /* Même taille que les tags */
+        text-transform: uppercase;
         box-shadow: none !important;
         display: block !important;
         margin-left: auto !important;
-        text-decoration: none !important;
+        margin-top: 10px;
     }
     div[data-testid="column"] button[kind="secondary"]:hover {
         color: #d92644 !important;
-        background: none !important;
     }
 
-    /* DESIGN DES CARTES */
+    /* DESIGN DES CARTES : MARGES ÉGALES */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #efede1 !important;
+        border: 1px solid #b6beb1 !important;
+        border-radius: 8px !important;
+        padding: 15px !important; /* Marge égale partout */
+    }
+
     .spot-title { 
         color: #d92644; 
         font-weight: bold; 
         font-size: 0.95rem; 
         line-height: 1.1;
-        margin-bottom: 2px;
     }
 
     .spot-addr { font-size: 0.72rem; color: #202b24; margin-top: 4px; opacity: 0.8; line-height: 1.2; }
@@ -86,9 +94,8 @@ st.markdown("""
         color: #efede1 !important; 
         border-radius: 4px !important; 
         font-weight: bold !important; 
-        padding: 0px 12px !important; 
-        font-size: 0.7rem !important;
-        text-decoration: none !important;
+        padding: 0px 10px !important; 
+        font-size: 0.65rem !important;
         height: 18px !important;
         display: inline-flex !important;
         align-items: center !important;
@@ -100,6 +107,8 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
+
+st.title("Mes spots")
 
 try:
     # 3. Données
@@ -119,14 +128,13 @@ try:
     c_name = next((cn for cn in df.columns if cn in ['name', 'nom']), df.columns[0])
     c_addr = next((ca for ca in df.columns if ca in ['address', 'adresse']), df.columns[1])
 
-    # --- LAYOUT : CARTE vs FILTRES (AVEC RECHERCHE À DROITE) ---
+    # --- LAYOUT : CARTE vs FILTRES ---
     col_map, col_filters = st.columns([1.6, 1.4])
 
     with col_filters:
         st.write("### Filtrer")
         
-        # Barre de recherche et Bouton Reset sur la même ligne
-        c_search_ui, c_reset_ui = st.columns([1, 0.6])
+        c_search_ui, c_reset_ui = st.columns([1, 0.5])
         with c_search_ui:
             search_query = st.text_input("Rechercher", placeholder="Nom du spot...", key="search_input", label_visibility="collapsed")
         with c_reset_ui:
@@ -168,22 +176,19 @@ try:
     n_cols = 4
     for i in range(0, len(df_filtered.head(100)), n_cols):
         grid_cols = st.columns(n_cols)
-        # On itère sur les spots de la ligne actuelle
         for j, (idx, row) in enumerate(df_filtered.iloc[i:i+n_cols].iterrows()):
             with grid_cols[j]:
                 with st.container(border=True):
-                    # Titre et Bouton Go alignés
-                    h_col, b_col = st.columns([3.5, 1])
+                    h_col, b_col = st.columns([3.2, 1])
                     with h_col:
                         st.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
                     with b_col:
                         if c_link and pd.notna(row[c_link]):
                             st.link_button("Go", row[c_link])
                     
-                    # Tags puis Adresse
                     if col_tags and pd.notna(row[col_tags]):
                         t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
-                        st.markdown(f"<div style='margin-bottom:2px;'>{t_html}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='margin-top:5px; margin-bottom:2px;'>{t_html}</div>", unsafe_allow_html=True)
                     
                     st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
 
