@@ -7,7 +7,7 @@ import re
 st.set_page_config(page_title="Mes spots", layout="wide")
 st.cache_data.clear() 
 
-# 2. Style CSS
+# 2. Style CSS (Inchangé)
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
@@ -30,11 +30,6 @@ st.markdown(f"""
         background-color: #b6beb1 !important;
         border-bottom: 1px solid #b6beb1 !important;
     }}
-
-    /* Switch */
-    div[role="switch"] {{ background-color: #b6beb1 !important; }}
-    div[aria-checked="true"][role="switch"] {{ background-color: #d92644 !important; }}
-    div[role="switch"] > div:last-child {{ background-color: #efede1 !important; box-shadow: none !important; }}
 
     /* Recherche */
     div[data-testid="stTextInput"] div[data-baseweb="input"] {{ background-color: #b6beb1 !important; border: none !important; }}
@@ -89,18 +84,6 @@ try:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
     df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy() if search_query else df.copy()
 
-    st.write("### Filtrer")
-    if col_tags:
-        all_tags = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
-        t_cols = st.columns(6)
-        selected_tags = []
-        for i, tag in enumerate(all_tags):
-            with t_cols[i % 6]:
-                if st.toggle(tag, key=f"toggle_{tag}"):
-                    selected_tags.append(tag)
-        if selected_tags:
-            df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
-
     # --- AFFICHAGE ---
     col1, col2 = st.columns([2, 1])
 
@@ -127,25 +110,22 @@ try:
             collision_group="spots"
         )
 
-        # CONFIGURATION DU TOOLTIP PERSONNALISÉ
-        tooltip_style = {
-            "html": f"<b>{{{{ {c_name} }}}}</b>", # Affiche le nom en gras
-            "style": {
-                "backgroundColor": "#b6beb1",
-                "color": "#202b24",
-                "fontFamily": "sans-serif",
-                "fontSize": "12px",
-                "padding": "10px",
-                "borderRadius": "8px",
-                "border": "1px solid #b6beb1"
-            }
-        }
-
+        # TOOLTIP MIS À JOUR
         st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
             initial_view_state=view_state,
             layers=[layer],
-            tooltip=tooltip_style
+            tooltip={
+                "html": f"<b>{{{c_name}}}</b>",
+                "style": {
+                    "backgroundColor": "#f0f2f6",
+                    "color": "#202b24",
+                    "fontFamily": "sans-serif",
+                    "fontSize": "13px",
+                    "padding": "8px",
+                    "borderRadius": "5px"
+                }
+            }
         ))
 
     with col2:
@@ -153,9 +133,6 @@ try:
         for _, row in df_filtered.head(50).iterrows():
             with st.expander(f"**{row[c_name]}**"):
                 st.write(f"📍 {row[c_addr]}")
-                if col_tags and pd.notna(row[col_tags]):
-                    tags = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
-                    st.markdown(tags, unsafe_allow_html=True)
                 if c_link and pd.notna(row[c_link]):
                     st.link_button("**Y aller**", row[c_link], use_container_width=True)
 
