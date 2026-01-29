@@ -22,12 +22,8 @@ st.markdown("""
     header[data-testid="stHeader"], div[data-testid="stDecoration"] { display: none !important; }
     .main .block-container { padding-top: 2rem !important; }
 
-    /* TITRE */
     h1 { color: #d92644 !important; margin-bottom: 20px !important; }
     html, body, [class*="st-"], p, div, span, label, h3 { color: #202b24 !important; }
-
-    /* FILTRES TAGS RESSERRÉS */
-    div[data-testid="stCheckbox"] { margin-bottom: -15px !important; }
 
     /* BARRE DE RECHERCHE AVEC LOUPE */
     div[data-testid="stTextInput"] div[data-baseweb="input"] { 
@@ -43,24 +39,20 @@ st.markdown("""
     }
     .stTextInput p { display: none !important; } 
 
-    /* TEXTE CLIQUABLE RESET - COPIE EXACTE DE LA TYPO DES TAGS */
+    /* TEXTE CLIQUABLE RESET */
     .reset-link {
         font-family: inherit;
         font-weight: bold !important;
         color: #202b24 !important;
         text-decoration: none !important;
-        font-size: 0.95rem !important; /* TAILLE EXACTE DES TAGS */
+        font-size: 0.95rem !important; 
         display: block;
         text-align: right;
-        margin-top: 15px; /* Ajusté pour l'alignement visuel avec l'input */
+        margin-top: 10px;
         transition: color 0.2s;
         cursor: pointer;
-        text-transform: none !important;
     }
-    .reset-link:hover { 
-        color: #7397a3 !important;
-        text-decoration: none !important;
-    }
+    .reset-link:hover { color: #7397a3 !important; }
 
     /* DESIGN DES CARTES */
     div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -73,20 +65,12 @@ st.markdown("""
     .spot-title { color: #d92644; font-weight: bold; font-size: 0.95rem; line-height: 1.1; }
     .spot-addr { font-size: 0.72rem; color: #202b24; opacity: 0.8; line-height: 1.2; }
     
-    /* ÉTIQUETTE DE TAGS POUR RÉFÉRENCE */
     .tag-label { 
-        display: inline-block; 
-        background-color: #b6beb1; 
-        color: #202b24; 
-        padding: 1px 6px; 
-        border-radius: 10px; 
-        margin-right: 3px; 
-        margin-bottom: 3px;
-        font-size: 0.58rem; 
-        font-weight: bold; 
+        display: inline-block; background-color: #b6beb1; color: #202b24; padding: 1px 6px; 
+        border-radius: 10px; margin-right: 3px; margin-bottom: 3px; font-size: 0.58rem; font-weight: bold; 
     }
     
-    /* BOUTON GO */
+    /* BOUTON GO AVEC EFFET SURVOL RÉTABLI */
     .stLinkButton a { 
         background-color: #7397a3 !important; 
         color: #efede1 !important; 
@@ -99,6 +83,11 @@ st.markdown("""
         align-items: center !important;
         border: none !important;
         text-decoration: none !important;
+        transition: background-color 0.2s !important;
+    }
+    .stLinkButton a:hover {
+        background-color: #b6beb1 !important;
+        color: #202b24 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -127,12 +116,10 @@ try:
 
     with col_filters:
         st.write("### Filtrer")
-        
         c_search_ui, c_reset_ui = st.columns([1, 0.6])
         with c_search_ui:
             search_query = st.text_input("Rechercher", placeholder="Nom du spot...", key="search_input", label_visibility="collapsed")
         with c_reset_ui:
-            # Texte avec Majuscule et typo identique aux tags
             st.markdown('<a href="/?reset=1" target="_self" class="reset-link">Tout réinitialiser</a>', unsafe_allow_html=True)
 
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
@@ -181,13 +168,16 @@ try:
                         if c_link and pd.notna(row[c_link]):
                             st.link_button("Go", row[c_link])
                     
+                    # 1. ADRESSE (juste après le nom)
+                    st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
+                    
+                    # 2. TAGS (en dernier)
                     st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
                     if col_tags and pd.notna(row[col_tags]):
                         t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
                         st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
-                    
-                    st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-                    st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
 
 except Exception as e:
     st.error(f"Erreur : {e}")
+    
