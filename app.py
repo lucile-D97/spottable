@@ -6,20 +6,19 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# Initialisation de la vue
+# Initialisation de la vue dans le Session State pour éviter le reset au clic
 if 'view_state' not in st.session_state:
     st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
 
-# 2. Style CSS (Forçage du curseur et design)
+# 2. Style CSS
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
     header[data-testid="stHeader"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
 
-    /* FORCE LE POINTEUR SUR LA CARTE ET LES ÉLÉMENTS INTERACTIFS */
-    .deckgl-wrapper {{ cursor: crosshair !important; }}
-    canvas.deckgl-overlay {{ cursor: pointer !important; }}
+    /* FORCE LE CURSEUR POINTER (doigt tendu) SUR TOUTE LA CARTE */
+    .deckgl-wrapper {{ cursor: pointer !important; }}
 
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
@@ -36,6 +35,7 @@ st.markdown(f"""
         color: #efede1 !important; 
         border-radius: 8px !important; 
         font-weight: bold !important; 
+        text-decoration: none !important;
         display: flex !important;
         justify-content: center !important;
     }}
@@ -56,6 +56,7 @@ def get_precise_coords(url):
 st.title("Mes spots")
 
 try:
+    # 3. Données
     df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
@@ -77,9 +78,11 @@ try:
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
+    # --- RECHERCHE ET FILTRES ---
     col_search, _ = st.columns([1, 2])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
+    
     df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
     st.write("### Filtrer")
@@ -101,31 +104,20 @@ try:
         icon_config = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
         df_filtered["icon_data"] = [icon_config for _ in range(len(df_filtered))]
 
-        # 1. Couche des pins (visuelle)
-        layer_icons = pdk.Layer(
+        layer = pdk.Layer(
             "IconLayer",
             data=df_filtered,
             get_icon="icon_data",
-            get_size=4,
+            get_size=4, # Taille augmentée pour faciliter le clic
             size_scale=10,
             get_position=["lon", "lat"],
-            pickable=False,
-        )
-
-        # 2. Couche invisible (capte le clic et le curseur)
-        layer_interact = pdk.Layer(
-            "ScatterplotLayer",
-            data=df_filtered,
-            get_position=["lon", "lat"],
-            get_radius=40,
-            get_fill_color=[0, 0, 0, 0], # Invisible
             pickable=True,
         )
 
         map_selection = st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
             initial_view_state=st.session_state.view_state,
-            layers=[layer_icons, layer_interact],
+            layers=[layer],
             tooltip={
                 "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
                 "style": {"backgroundColor": "#efede1", "color": "#202b24", "fontSize": "14px", "padding": "10px", "borderRadius": "8px", "boxShadow": "0px 2px 6px rgba(0,0,0,0.1)"}
@@ -133,16 +125,21 @@ try:
         ), on_select="rerun", selection_mode="single-object")
 
     with col2:
+        # LOGIQUE DE CLIC
+        # On essaie de récupérer l'objet cliqué via le mode natif de Streamlit 1.35+
         selected_objects = map_selection.selection.get("objects", [])
         
         if selected_objects:
             clicked_spot = selected_objects[0]
+            # On met à jour le zoom et le centre pour le prochain rendu
             st.session_state.view_state = pdk.ViewState(
                 latitude=clicked_spot['lat'], 
                 longitude=clicked_spot['lon'], 
-                zoom=16, pitch=0
+                zoom=16, 
+                pitch=0
             )
             df_display = df_filtered[df_filtered[c_name] == clicked_spot[c_name]]
+            
             if st.button("Tout réafficher ↺", use_container_width=True):
                 st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12)
                 st.rerun()
