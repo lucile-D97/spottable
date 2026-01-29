@@ -7,7 +7,6 @@ import re
 st.set_page_config(page_title="Mes spots", layout="wide")
 
 # --- LOGIQUE DE RÉINITIALISATION ---
-# On vérifie si "reset" est dans l'URL. Si oui, on vide tout et on recharge.
 if "reset" in st.query_params:
     st.query_params.clear()
     st.session_state.search_input = ""
@@ -44,29 +43,31 @@ st.markdown("""
     }
     .stTextInput p { display: none !important; } 
 
-    /* TEXTE CLIQUABLE RESET (Stylé selon tes tags) */
+    /* TEXTE CLIQUABLE RESET */
     .reset-link {
         font-family: inherit;
         font-weight: bold !important;
         color: #202b24 !important;
         text-decoration: none !important;
-        font-size: 0.75rem !important; /* Un peu plus grand que les tags */
+        font-size: 0.85rem !important; 
+        text-transform: none !important; /* Permet la majuscule initiale */
         display: block;
         text-align: right;
-        margin-top: 12px;
+        margin-top: 10px;
         transition: color 0.2s;
         cursor: pointer;
     }
     .reset-link:hover { 
-        color: #7397a3 !important; /* Couleur demandée au survol */
+        color: #7397a3 !important;
+        text-decoration: none !important;
     }
 
-    /* DESIGN DES CARTES : MARGES ÉGALES ET ESPACEMENT */
+    /* DESIGN DES CARTES */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #efede1 !important;
         border: 1px solid #b6beb1 !important;
         border-radius: 8px !important;
-        padding: 18px !important; /* Marges uniformes */
+        padding: 18px !important;
     }
 
     .spot-title { 
@@ -90,7 +91,7 @@ st.markdown("""
         font-weight: bold; 
     }
     
-    /* BOUTON GO RECTANGLE HORIZONTAL */
+    /* BOUTON GO */
     .stLinkButton a { 
         background-color: #7397a3 !important; 
         color: #efede1 !important; 
@@ -114,7 +115,6 @@ st.markdown("""
 st.title("Mes spots")
 
 try:
-    # 3. Données
     df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
@@ -131,7 +131,7 @@ try:
     c_name = next((cn for cn in df.columns if cn in ['name', 'nom']), df.columns[0])
     c_addr = next((ca for ca in df.columns if ca in ['address', 'adresse']), df.columns[1])
 
-    # --- LAYOUT : CARTE vs FILTRES ---
+    # --- LAYOUT ---
     col_map, col_filters = st.columns([1.6, 1.4])
 
     with col_filters:
@@ -141,8 +141,8 @@ try:
         with c_search_ui:
             search_query = st.text_input("Rechercher", placeholder="Nom du spot...", key="search_input", label_visibility="collapsed")
         with c_reset_ui:
-            # ON REMPLACE LE BOUTON PAR UN LIEN CLIQUABLE
-            st.markdown('<a href="/?reset=1" target="_self" class="reset-link">TOUT RÉINITIALISER</a>', unsafe_allow_html=True)
+            # Texte avec majuscule initiale
+            st.markdown('<a href="/?reset=1" target="_self" class="reset-link">Tout réinitialiser</a>', unsafe_allow_html=True)
 
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
@@ -173,7 +173,7 @@ try:
             tooltip={"html": f"<b>{{{c_name}}}</b>", "style": {"backgroundColor": "#efede1", "color": "#202b24"}}
         ))
 
-    # --- GRILLE DE CARTES ---
+    # --- GRILLE ---
     st.markdown("---")
     st.write(f"### {len(df_filtered)} spots trouvés")
     
@@ -190,15 +190,12 @@ try:
                         if c_link and pd.notna(row[c_link]):
                             st.link_button("Go", row[c_link])
                     
-                    # Espacement égal entre Titre / Tags / Adresse
                     st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-                    
                     if col_tags and pd.notna(row[col_tags]):
                         t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
                         st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
                     
                     st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-                    
                     st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
 
 except Exception as e:
