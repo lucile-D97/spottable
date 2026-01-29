@@ -14,46 +14,16 @@ st.markdown(f"""
     header[data-testid="stHeader"] {{ display: none !important; }}
     div[data-testid="stDecoration"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
-
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
-
-    /* Expanders */
-    div[data-testid="stExpander"] {{
-        background-color: #efede1 !important;
-        border: 0.25px solid #b6beb1 !important;
-        border-radius: 8px !important;
-        margin-bottom: 10px !important;
-    }}
+    div[data-testid="stExpander"] {{ background-color: #efede1 !important; border: 0.25px solid #b6beb1 !important; border-radius: 8px !important; margin-bottom: 10px !important; }}
     div[data-testid="stExpander"] summary:hover {{ background-color: #b6beb1 !important; }}
-    div[data-testid="stExpander"] details[open] summary {{
-        background-color: #b6beb1 !important;
-        border-bottom: 1px solid #b6beb1 !important;
-    }}
-    div[data-testid="stExpander"] details[open] > div[role="region"] {{
-        background-color: #efede1 !important;
-    }}
-
-    /* Switch */
+    div[data-testid="stExpander"] details[open] summary {{ background-color: #b6beb1 !important; border-bottom: 1px solid #b6beb1 !important; }}
     div[role="switch"] {{ background-color: #b6beb1 !important; }}
     div[aria-checked="true"][role="switch"] {{ background-color: #d92644 !important; }}
     div[role="switch"] > div:last-child {{ background-color: #efede1 !important; box-shadow: none !important; }}
-
-    /* Recherche */
     div[data-testid="stTextInput"] div[data-baseweb="input"] {{ background-color: #b6beb1 !important; border: none !important; }}
-    div[data-testid="stTextInput"] input {{ color: #202b24 !important; -webkit-text-fill-color: #202b24 !important; }}
-
-    /* Bouton Y aller */
-    .stLinkButton a {{ 
-        background-color: #7397a3 !important; 
-        color: #efede1 !important; 
-        border: none !important; 
-        border-radius: 8px !important; 
-        font-weight: bold !important; 
-        text-decoration: none !important;
-        display: flex !important;
-        justify-content: center !important;
-    }}
+    .stLinkButton a {{ background-color: #7397a3 !important; color: #efede1 !important; border: none !important; border-radius: 8px !important; font-weight: bold !important; display: flex !important; justify-content: center !important; }}
     .tag-label {{ display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }}
     </style>
     """, unsafe_allow_html=True)
@@ -67,7 +37,6 @@ def get_precise_coords(url):
 st.title("Mes spots")
 
 try:
-    # 3. Chargement des Données
     df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
@@ -89,13 +58,11 @@ try:
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
     col_tags = next((c for c in df.columns if c == 'tags'), None)
 
-    # --- RECHERCHE ---
     col_search, _ = st.columns([1, 2])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
     df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy() if search_query else df.copy()
 
-    # --- FILTRES ---
     st.write("### Filtrer")
     if col_tags:
         all_tags = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
@@ -108,14 +75,12 @@ try:
         if selected_tags:
             df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
 
-    # --- AFFICHAGE ---
+    # --- AFFICHAGE CARTE ---
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        # CENTRAGE FIXE SUR PARIS
         view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
 
-        # Definition propre de l'icone pour Pydeck
         icon_config = {
             "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
             "width": 100,
@@ -128,11 +93,15 @@ try:
             "IconLayer",
             data=df_filtered,
             get_icon="icon_data",
-            get_size=4,
-            size_scale=10,
+            get_size=3,          # Taille diminuée (était à 4)
+            size_scale=8,        # Échelle diminuée (était à 10)
             get_position=["lon", "lat"],
             pickable=True,
-            opacity=0.8
+            opacity=0.9,
+            # Supprime les pins qui se chevauchent pour aérer la carte
+            extensions=[pdk.types.LayerExtension("CollisionFilterExtension")],
+            collision_enabled=True,
+            collision_group="spots"
         )
 
         st.pydeck_chart(pdk.Deck(
