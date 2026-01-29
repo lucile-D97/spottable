@@ -6,24 +6,41 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# 2. Style CSS
+# 2. Style CSS (incluant le curseur pointer)
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
     header[data-testid="stHeader"] {{ display: none !important; }}
-    div[data-testid="stDecoration"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
+    
+    /* Force le curseur 'doigt tendu' sur la carte */
+    .deckgl-wrapper {{ cursor: pointer !important; }}
+
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
-    div[data-testid="stExpander"] {{ background-color: #efede1 !important; border: 0.5px solid #b6beb1 !important; border-radius: 8px !important; margin-bottom: 10px !important; }}
-    div[data-testid="stExpander"] summary:hover {{ background-color: #b6beb1 !important; }}
-    div[data-testid="stExpander"] details[open] summary {{ background-color: #b6beb1 !important; border-bottom: 1px solid #b6beb1 !important; }}
-    div[role="switch"] {{ background-color: #b6beb1 !important; }}
-    div[aria-checked="true"][role="switch"] {{ background-color: #d92644 !important; }}
-    div[role="switch"] > div:last-child {{ background-color: #efede1 !important; box-shadow: none !important; }}
-    div[data-testid="stTextInput"] div[data-baseweb="input"] {{ background-color: #b6beb1 !important; border: none !important; }}
-    div[data-testid="stTextInput"] input {{ color: #202b24 !important; -webkit-text-fill-color: #202b24 !important; }}
-    .stLinkButton a {{ background-color: #7397a3 !important; color: #efede1 !important; border: none !important; border-radius: 8px !important; font-weight: bold !important; text-decoration: none !important; display: flex !important; justify-content: center !important; }}
+    
+    div[data-testid="stExpander"] {{
+        background-color: #efede1 !important;
+        border: 0.25px solid #b6beb1 !important;
+        border-radius: 8px !important;
+        margin-bottom: 10px !important;
+    }}
+    
+    /* Mini bouton + circulaire */
+    .stLinkButton a {{ 
+        background-color: #7397a3 !important; 
+        color: #efede1 !important; 
+        border-radius: 50% !important;
+        width: 32px !important;
+        height: 32px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 18px !important;
+        font-weight: bold !important; 
+        text-decoration: none !important;
+        padding: 0 !important;
+    }}
     .tag-label {{ display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }}
     </style>
     """, unsafe_allow_html=True)
@@ -46,7 +63,6 @@ try:
     c_link = next((c for c in df.columns if any(w in c for w in ['map', 'lien', 'geo'])), None)
     col_tags = next((c for c in df.columns if c == 'tags'), None)
 
-    # Nettoyage coordonnées
     if lat_col and lon_col:
         df['lat'] = pd.to_numeric(df[lat_col].astype(str).str.replace(',', '.'), errors='coerce')
         df['lon'] = pd.to_numeric(df[lon_col].astype(str).str.replace(',', '.'), errors='coerce')
@@ -60,11 +76,10 @@ try:
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
-    # RECHERCHE ET FILTRES
+    # --- RECHERCHE ET FILTRES ---
     col_search, _ = st.columns([1, 2])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
-
     df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
     st.write("### Filtrer")
@@ -83,6 +98,7 @@ try:
     col1, col2 = st.columns([2, 1])
 
     with col1:
+        # On utilise une coordonnée centrale stable
         view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
         icon_config = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
         df_filtered["icon_data"] = [icon_config for _ in range(len(df_filtered))]
@@ -91,15 +107,14 @@ try:
             "IconLayer",
             data=df_filtered,
             get_icon="icon_data",
-            get_size=2.5,
-            size_scale=8,
+            get_size=3,
+            size_scale=10,
             get_position=["lon", "lat"],
-            pickable=True,
+            pickable=True, # REND LE PIN CLIQUABLE
             collision_enabled=True,
-            collision_group="spots"
         )
 
-        # On utilise une variable pour capturer le clic
+        # CAPTURE DU CLIC
         map_selection = st.pydeck_chart(
             pdk.Deck(
                 map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -107,41 +122,35 @@ try:
                 layers=[layer],
                 tooltip={
                     "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
-                    "style": {"backgroundColor": "#efede1", "color": "#202b24", "fontFamily": "sans-serif", "fontSize": "14px", "padding": "10px", "borderRadius": "8px", "boxShadow": "0px 2px 6px rgba(0,0,0,0.1)"}
+                    "style": {"backgroundColor": "#efede1", "color": "#202b24", "fontSize": "14px", "padding": "10px", "borderRadius": "8px"}
                 }
             ),
-            on_select="rerun",
+            on_select="rerun", # INDISPENSABLE POUR LIER LES DEUX COLONNES
             selection_mode="single-object"
         )
 
     with col2:
-        # TECHNIQUE DE DÉTECTION ROBUSTE
-        # On regarde si un objet a été sélectionné dans le dictionnaire de sélection
-        selection = map_selection.selection
-        selected_spots = selection.get("objects", {}) # On récupère les objets sélectionnés
+        # DETECTION DU POINT CLIQUE
+        selected_objects = map_selection.selection.get("objects", [])
         
-        # On extrait la liste des spots sélectionnés (il y en aura 1 max car mode 'single-object')
-        # selected_spots est souvent une liste de dictionnaires
-        if selected_spots:
-            # On récupère le nom du premier spot sélectionné pour filtrer le DataFrame
-            spot_nom = selected_spots[0].get(c_name)
-            df_display = df_filtered[df_filtered[c_name] == spot_nom]
-            
+        if selected_objects:
+            # Si clic : on n'affiche que l'objet sélectionné
+            df_display = pd.DataFrame(selected_objects)
             if st.button("Tout réafficher ↺", use_container_width=True):
                 st.rerun()
         else:
+            # Si pas de clic : affichage normal
             df_display = df_filtered.head(50)
             st.write(f"*{len(df_filtered)} spots trouvés (Top 50)*")
 
         for _, row in df_display.iterrows():
-            with st.expander(f"**{row[c_name]}**", expanded=len(selected_spots) > 0):
+            with st.expander(f"**{row[c_name]}**", expanded=len(selected_objects) > 0):
                 st.write(f"📍 {row[c_addr]}")
                 if col_tags and pd.notna(row[col_tags]):
                     tags_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
                     st.markdown(tags_html, unsafe_allow_html=True)
                 if c_link and pd.notna(row[c_link]):
-                    st.write("")
-                    st.link_button("**Y aller**", row[c_link], use_container_width=True)
+                    st.link_button("+", row[c_link])
 
 except Exception as e:
     st.error(f"Erreur : {e}")
