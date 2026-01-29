@@ -5,9 +5,8 @@ import re
 
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
-st.cache_data.clear() 
 
-# 2. Style CSS (Inchangé)
+# 2. Style CSS
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
@@ -18,7 +17,6 @@ st.markdown(f"""
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
 
-    /* Expanders */
     div[data-testid="stExpander"] {{
         background-color: #efede1 !important;
         border: 0.5px solid #b6beb1 !important;
@@ -31,7 +29,6 @@ st.markdown(f"""
         border-bottom: 1px solid #b6beb1 !important;
     }}
 
-    /* Recherche */
     div[data-testid="stTextInput"] div[data-baseweb="input"] {{ background-color: #b6beb1 !important; border: none !important; }}
     div[data-testid="stTextInput"] input {{ color: #202b24 !important; -webkit-text-fill-color: #202b24 !important; }}
 
@@ -45,7 +42,6 @@ st.markdown(f"""
         display: flex !important;
         justify-content: center !important;
     }}
-    .tag-label {{ display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -58,6 +54,7 @@ def get_precise_coords(url):
 st.title("Mes spots")
 
 try:
+    # 3. Chargement des Données
     df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
@@ -78,10 +75,16 @@ try:
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
+    # Initialisation de l'état de recherche si non présent
+    if "search_query" not in st.session_state:
+        st.session_state.search_query = ""
+
     col_search, _ = st.columns([1, 2])
     with col_search:
-        search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
-    df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy() if search_query else df.copy()
+        search_input = st.text_input("Rechercher", value=st.session_state.search_query, placeholder="Rechercher un spot", label_visibility="collapsed")
+        st.session_state.search_query = search_input
+
+    df_filtered = df[df[c_name].str.contains(st.session_state.search_query, case=False, na=False)].copy()
 
     # --- AFFICHAGE ---
     col1, col2 = st.columns([2, 1])
@@ -107,29 +110,44 @@ try:
             collision_group="spots"
         )
 
-        st.pydeck_chart(pdk.Deck(
-            map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-            initial_view_state=view_state,
-            layers=[layer],
-            tooltip={
-                "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
-                "style": {
-                    "backgroundColor": "#efede1",
-                    "color": "#202b24",
-                    "fontFamily": "sans-serif", # Utilise la police système sans-serif
-                    "fontSize": "14px",
-                    "fontWeight": "normal",     # Force une graisse normale identique aux adresses
-                    "padding": "10px",
-                    "borderRadius": "8px",
-                    "boxShadow": "0px 2px 6px rgba(0,0,0,0.1)" 
+        # On capture la sélection de la carte
+        map_selection = st.pydeck_chart(
+            pdk.Deck(
+                map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                initial_view_state=view_state,
+                layers=[layer],
+                tooltip={
+                    "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
+                    "style": {
+                        "backgroundColor": "#efede1",
+                        "color": "#202b24",
+                        "fontFamily": "sans-serif",
+                        "fontSize": "14px",
+                        "padding": "10px",
+                        "borderRadius": "8px",
+                        "boxShadow": "0px 2px 6px rgba(0,0,0,0.1)" 
+                    }
                 }
-            }
-        ))
+            ),
+            on_select="rerun", # Relance le script lors d'un clic
+            selection_mode="single" # Un seul point à la fois
+        )
 
     with col2:
-        st.write(f"*{len(df_filtered)} spots trouvés (Top 50)*")
-        for _, row in df_filtered.head(50).iterrows():
-            with st.expander(f"**{row[c_name]}**"):
+        # Logique de filtrage par clic
+        selected_indices = map_selection.get("selection", {}).get("indices", [])
+        
+        if selected_indices:
+            # On ne garde que l'élément cliqué
+            df_display = df_filtered.iloc[selected_indices]
+            if st.button("Tout réafficher ↺", use_container_width=True):
+                st.rerun()
+        else:
+            df_display = df_filtered.head(50)
+            st.write(f"*{len(df_filtered)} spots trouvés (Top 50)*")
+
+        for _, row in df_display.iterrows():
+            with st.expander(f"**{row[c_name]}**", expanded=bool(selected_indices)):
                 st.write(f"📍 {row[c_addr]}")
                 if c_link and pd.notna(row[c_link]):
                     st.link_button("**Y aller**", row[c_link], use_container_width=True)
