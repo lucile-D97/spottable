@@ -112,7 +112,7 @@ try:
             initial_view_state=view_state,
             layers=[layer],
             tooltip={
-                "html": f"<div>{{{c_name}}}</div>", # Suppression de la balise <b>
+                "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
                 "style": {
                     "backgroundColor": "#efede1",
                     "color": "#202b24",
