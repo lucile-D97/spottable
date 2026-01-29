@@ -6,17 +6,19 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# --- NOUVELLE PARTIE : MÉMOIRE DE LA CARTE ---
-# On initialise le view_state dans le session_state pour éviter la réinitialisation
+# --- GESTION DU CENTRAGE ---
+# On définit la position par défaut (Paris)
+PARIS_CENTER = {"lat": 48.8566, "lon": 2.3522, "zoom": 12}
+
 if 'view_state' not in st.session_state:
     st.session_state.view_state = pdk.ViewState(
-        latitude=48.8566, 
-        longitude=2.3522, 
-        zoom=12, 
+        latitude=PARIS_CENTER["lat"], 
+        longitude=PARIS_CENTER["lon"], 
+        zoom=PARIS_CENTER["zoom"], 
         pitch=0
     )
 
-# 2. Style CSS (Inchangé, fidèle à tes demandes)
+# 2. Style CSS (Inchangé pour garder ton design)
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
@@ -43,9 +45,6 @@ st.markdown(f"""
     div[data-testid="stTextInput"] div[data-baseweb="input"] {{ background-color: #b6beb1 !important; border: none !important; }}
     div[role="switch"] {{ background-color: #b6beb1 !important; }}
     div[aria-checked="true"][role="switch"] {{ background-color: #d92644 !important; }}
-    
-    /* Tentative de forçage du curseur */
-    .deckgl-wrapper {{ cursor: pointer !important; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -81,9 +80,14 @@ try:
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
     # --- RECHERCHE ET FILTRES ---
-    col_search, _ = st.columns([1, 2])
+    col_search, col_reset = st.columns([3, 1])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
+    with col_reset:
+        if st.button("Réinitialiser Paris ↺", use_container_width=True):
+            st.session_state.view_state = pdk.ViewState(latitude=PARIS_CENTER["lat"], longitude=PARIS_CENTER["lon"], zoom=PARIS_CENTER["zoom"])
+            st.rerun()
+
     df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
     st.write("### Filtrer")
@@ -113,7 +117,6 @@ try:
             highlight_color=[0, 0, 0, 255]
         )
 
-        # On utilise st.session_state.view_state pour garder la position
         map_selection = st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
             initial_view_state=st.session_state.view_state,
@@ -124,17 +127,15 @@ try:
             }
         ), on_select="rerun", selection_mode="single-object")
 
-    # --- GESTION DU POP-UP ---
+    # --- ACTION AU CLIC ---
     selected = map_selection.selection.get("objects", [])
     if selected:
-        @st.dialog(f"Détails du spot")
+        @st.dialog("Détails du spot")
         def show_details(spot):
-            st.subheader(spot[c_name])
+            st.write(f"### {spot[c_name]}")
             st.write(f"📍 {spot[c_addr]}")
             if c_link and pd.notna(spot[c_link]):
-                st.link_button("Ouvrir dans Google Maps", spot[c_link], use_container_width=True)
-            if st.button("Fermer"):
-                st.rerun()
+                st.link_button("Ouvrir dans Maps", spot[c_link], use_container_width=True)
         
         show_details(selected[0])
 
