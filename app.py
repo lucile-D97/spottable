@@ -3,43 +3,28 @@ import pandas as pd
 import pydeck as pdk
 import re
 
-# 1. Configuration de la page
+# 1. Configuration
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# 2. Style CSS (incluant le curseur pointer)
+# 2. Style CSS
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
     header[data-testid="stHeader"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
-    
-    /* Force le curseur 'doigt tendu' sur la carte */
     .deckgl-wrapper {{ cursor: pointer !important; }}
-
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
-    
-    div[data-testid="stExpander"] {{
-        background-color: #efede1 !important;
-        border: 0.25px solid #b6beb1 !important;
-        border-radius: 8px !important;
-        margin-bottom: 10px !important;
-    }}
-    
-    /* Mini bouton + circulaire */
+    div[data-testid="stExpander"] {{ background-color: #efede1 !important; border: 0.5px solid #b6beb1 !important; border-radius: 8px !important; margin-bottom: 10px !important; }}
     .stLinkButton a {{ 
         background-color: #7397a3 !important; 
         color: #efede1 !important; 
-        border-radius: 50% !important;
-        width: 32px !important;
-        height: 32px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 18px !important;
+        border: none !important; 
+        border-radius: 8px !important; 
         font-weight: bold !important; 
         text-decoration: none !important;
-        padding: 0 !important;
+        display: flex !important;
+        justify-content: center !important;
     }}
     .tag-label {{ display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }}
     </style>
@@ -51,10 +36,13 @@ def get_precise_coords(url):
     if match: return float(match.group(1)), float(match.group(2))
     return None, None
 
+# Initialisation du zoom et centre dans le Session State
+if 'view_state' not in st.session_state:
+    st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
+
 st.title("Mes spots")
 
 try:
-    # 3. Chargement des Données
     df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
@@ -76,7 +64,7 @@ try:
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
-    # --- RECHERCHE ET FILTRES ---
+    # FILTRES
     col_search, _ = st.columns([1, 2])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
@@ -94,12 +82,11 @@ try:
         if selected_tags:
             df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
 
-    # --- AFFICHAGE ---
+    # --- LOGIQUE DE SELECTION ---
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        # On utilise une coordonnée centrale stable
-        view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
+        # Création de la couche
         icon_config = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
         df_filtered["icon_data"] = [icon_config for _ in range(len(df_filtered))]
 
@@ -110,47 +97,48 @@ try:
             get_size=3,
             size_scale=10,
             get_position=["lon", "lat"],
-            pickable=True, # REND LE PIN CLIQUABLE
-            collision_enabled=True,
+            pickable=True,
         )
 
-        # CAPTURE DU CLIC
-        map_selection = st.pydeck_chart(
-            pdk.Deck(
-                map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-                initial_view_state=view_state,
-                layers=[layer],
-                tooltip={
-                    "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
-                    "style": {"backgroundColor": "#efede1", "color": "#202b24", "fontSize": "14px", "padding": "10px", "borderRadius": "8px"}
-                }
-            ),
-            on_select="rerun", # INDISPENSABLE POUR LIER LES DEUX COLONNES
-            selection_mode="single-object"
+        map_deck = pdk.Deck(
+            map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+            initial_view_state=st.session_state.view_state,
+            layers=[layer],
+            tooltip={"html": f"<b>{{{c_name}}}</b>"}
         )
+
+        # Affichage et capture du clic
+        selection = st.pydeck_chart(map_deck, on_select="rerun", selection_mode="single-object")
 
     with col2:
-        # DETECTION DU POINT CLIQUE
-        selected_objects = map_selection.selection.get("objects", [])
+        selected_objects = selection.selection.get("objects", [])
         
         if selected_objects:
-            # Si clic : on n'affiche que l'objet sélectionné
-            df_display = pd.DataFrame(selected_objects)
+            # MISE A JOUR DU ZOOM AUTO
+            clicked_spot = selected_objects[0]
+            st.session_state.view_state = pdk.ViewState(
+                latitude=clicked_spot['lat'], 
+                longitude=clicked_spot['lon'], 
+                zoom=16, 
+                pitch=0
+            )
+            df_display = df_filtered[df_filtered[c_name] == clicked_spot[c_name]]
             if st.button("Tout réafficher ↺", use_container_width=True):
+                st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12)
                 st.rerun()
         else:
-            # Si pas de clic : affichage normal
             df_display = df_filtered.head(50)
-            st.write(f"*{len(df_filtered)} spots trouvés (Top 50)*")
+            st.write(f"*{len(df_filtered)} spots trouvés*")
 
         for _, row in df_display.iterrows():
             with st.expander(f"**{row[c_name]}**", expanded=len(selected_objects) > 0):
                 st.write(f"📍 {row[c_addr]}")
                 if col_tags and pd.notna(row[col_tags]):
-                    tags_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
-                    st.markdown(tags_html, unsafe_allow_html=True)
+                    tags = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
+                    st.markdown(tags, unsafe_allow_html=True)
                 if c_link and pd.notna(row[c_link]):
-                    st.link_button("+", row[c_link])
+                    st.write("")
+                    st.link_button("**Y aller**", row[c_link], use_container_width=True)
 
 except Exception as e:
     st.error(f"Erreur : {e}")
