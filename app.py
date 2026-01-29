@@ -75,7 +75,6 @@ try:
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
-    # Initialisation de l'état de recherche si non présent
     if "search_query" not in st.session_state:
         st.session_state.search_query = ""
 
@@ -110,7 +109,7 @@ try:
             collision_group="spots"
         )
 
-        # On capture la sélection de la carte
+        # Correction : selection_mode="single-object"
         map_selection = st.pydeck_chart(
             pdk.Deck(
                 map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -129,25 +128,27 @@ try:
                     }
                 }
             ),
-            on_select="rerun", # Relance le script lors d'un clic
-            selection_mode="single" # Un seul point à la fois
+            on_select="rerun",
+            selection_mode="single-object"
         )
 
     with col2:
-        # Logique de filtrage par clic
-        selected_indices = map_selection.get("selection", {}).get("indices", [])
+        # On récupère les objets sélectionnés plutôt que les index bruts
+        selected_objects = map_selection.selection.get("objects", [])
         
-        if selected_indices:
-            # On ne garde que l'élément cliqué
-            df_display = df_filtered.iloc[selected_indices]
+        if selected_objects:
+            # Création d'un DataFrame à partir de l'objet cliqué
+            df_display = pd.DataFrame(selected_objects)
             if st.button("Tout réafficher ↺", use_container_width=True):
+                st.session_state.search_query = "" # Reset search si besoin
                 st.rerun()
         else:
             df_display = df_filtered.head(50)
             st.write(f"*{len(df_filtered)} spots trouvés (Top 50)*")
 
         for _, row in df_display.iterrows():
-            with st.expander(f"**{row[c_name]}**", expanded=bool(selected_indices)):
+            # L'expander est ouvert par défaut si un objet est sélectionné
+            with st.expander(f"**{row[c_name]}**", expanded=bool(selected_objects)):
                 st.write(f"📍 {row[c_addr]}")
                 if c_link and pd.notna(row[c_link]):
                     st.link_button("**Y aller**", row[c_link], use_container_width=True)
