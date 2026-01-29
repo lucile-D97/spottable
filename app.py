@@ -6,7 +6,7 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# Initialisation de la vue dans le Session State pour éviter le reset au clic
+# Initialisation de la vue
 if 'view_state' not in st.session_state:
     st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
 
@@ -17,7 +17,8 @@ st.markdown(f"""
     header[data-testid="stHeader"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
 
-    /* FORCE LE CURSEUR POINTER (doigt tendu) SUR TOUTE LA CARTE */
+    /* FORCE LE CURSEUR POINTER (doigt tendu) */
+    canvas.deckgl-overlay {{ cursor: pointer !important; }}
     .deckgl-wrapper {{ cursor: pointer !important; }}
 
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
@@ -56,7 +57,6 @@ def get_precise_coords(url):
 st.title("Mes spots")
 
 try:
-    # 3. Données
     df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
@@ -78,11 +78,10 @@ try:
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
-    # --- RECHERCHE ET FILTRES ---
+    # --- FILTRES ---
     col_search, _ = st.columns([1, 2])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
-    
     df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
     st.write("### Filtrer")
@@ -101,17 +100,15 @@ try:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        icon_config = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
-        df_filtered["icon_data"] = [icon_config for _ in range(len(df_filtered))]
-
+        # REMPLACEMENT PAR SCATTERPLOTLAYER (Disques rouges)
         layer = pdk.Layer(
-            "IconLayer",
+            "ScatterplotLayer",
             data=df_filtered,
-            get_icon="icon_data",
-            get_size=4, # Taille augmentée pour faciliter le clic
-            size_scale=10,
             get_position=["lon", "lat"],
+            get_color=[217, 38, 68, 200], # #d92644 avec un peu d'opacité
+            get_radius=80, # Taille fixe pour bien les voir
             pickable=True,
+            auto_highlight=True, # Ajoute un effet brillant au survol
         )
 
         map_selection = st.pydeck_chart(pdk.Deck(
@@ -125,13 +122,11 @@ try:
         ), on_select="rerun", selection_mode="single-object")
 
     with col2:
-        # LOGIQUE DE CLIC
-        # On essaie de récupérer l'objet cliqué via le mode natif de Streamlit 1.35+
         selected_objects = map_selection.selection.get("objects", [])
         
         if selected_objects:
             clicked_spot = selected_objects[0]
-            # On met à jour le zoom et le centre pour le prochain rendu
+            # Zoom auto
             st.session_state.view_state = pdk.ViewState(
                 latitude=clicked_spot['lat'], 
                 longitude=clicked_spot['lon'], 
@@ -139,7 +134,6 @@ try:
                 pitch=0
             )
             df_display = df_filtered[df_filtered[c_name] == clicked_spot[c_name]]
-            
             if st.button("Tout réafficher ↺", use_container_width=True):
                 st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12)
                 st.rerun()
