@@ -7,37 +7,37 @@ import re
 st.set_page_config(page_title="Mes spots", layout="wide")
 
 # 2. Style CSS
-st.markdown(f"""
+st.markdown("""
     <style>
-    .stApp {{ background-color: #efede1 !important; }}
-    header[data-testid="stHeader"] {{ display: none !important; }}
-    div[data-testid="stDecoration"] {{ display: none !important; }}
-    .main .block-container {{ padding-top: 2rem !important; }}
+    .stApp { background-color: #efede1 !important; }
+    header[data-testid="stHeader"] { display: none !important; }
+    div[data-testid="stDecoration"] { display: none !important; }
+    .main .block-container { padding-top: 2rem !important; }
 
-    h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
-    html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
+    h1 { color: #d92644 !important; margin-top: -30px !important; }
+    html, body, [class*="st-"], p, div, span, label, h3 { color: #202b24 !important; }
 
-    div[data-testid="stExpander"] {{
+    div[data-testid="stExpander"] {
         background-color: #efede1 !important;
         border: 0.5px solid #b6beb1 !important;
         border-radius: 8px !important;
         margin-bottom: 10px !important;
-    }}
+    }
     
-    .stLinkButton a {{ 
+    .stLinkButton a { 
         background-color: #7397a3 !important; 
         color: #efede1 !important; 
         border-radius: 8px !important; 
         font-weight: bold !important; 
         display: flex !important;
         justify-content: center !important;
-    }}
+    }
     
-    .tag-label {{ display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }}
+    .tag-label { display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }
     
-    div[data-testid="stTextInput"] div[data-baseweb="input"] {{ background-color: #b6beb1 !important; border: none !important; }}
-    div[role="switch"] {{ background-color: #b6beb1 !important; }}
-    div[aria-checked="true"][role="switch"] {{ background-color: #d92644 !important; }}
+    div[data-testid="stTextInput"] div[data-baseweb="input"] { background-color: #b6beb1 !important; border: none !important; }
+    div[role="switch"] { background-color: #b6beb1 !important; }
+    div[aria-checked="true"][role="switch"] { background-color: #d92644 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -95,18 +95,18 @@ try:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        # Configuration de l'icône corrigée
-        icon_data = {
-            "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
-            "width": 100,
-            "height": 100,
-            "anchorY": 100
-        }
+        # Configuration propre de l'icône
+        df_filtered['icon_data'] = None
+        for i in df_filtered.index:
+            df_filtered.at[i, 'icon_data'] = {
+                "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
+                "width": 100, "height": 100, "anchorY": 100
+            }
 
         layer = pdk.Layer(
             "IconLayer",
             data=df_filtered,
-            get_icon=lambda d: icon_data,
+            get_icon="icon_data",
             get_size=4,
             size_scale=10,
             get_position=["lon", "lat"],
@@ -119,8 +119,8 @@ try:
             initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12),
             layers=[layer],
             tooltip={
-                "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
-                "style": {"backgroundColor": "#efede1", "color": "#202b24", "fontSize": "14px", "padding": "10px", "borderRadius": "8px"}
+                "html": f"<b>{{{c_name}}}</b>",
+                "style": {"backgroundColor": "#efede1", "color": "#202b24"}
             }
         ))
 
