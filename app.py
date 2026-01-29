@@ -6,14 +6,16 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# Fonction pour réinitialiser tous les filtres
-def reset_filters():
+# GESTION DU RESET VIA URL (Texte cliquable)
+if "reset" in st.query_params:
+    st.query_params.clear()
     st.session_state.search_input = ""
     for key in list(st.session_state.keys()):
         if key.startswith("toggle_"):
             st.session_state[key] = False
+    st.rerun()
 
-# 2. Style CSS (Forçage des marges et du bouton texte)
+# 2. Style CSS
 st.markdown("""
     <style>
     .stApp { background-color: #efede1 !important; }
@@ -23,11 +25,9 @@ st.markdown("""
     h1 { color: #d92644 !important; margin-bottom: 20px !important; }
     html, body, [class*="st-"], p, div, span, label, h3 { color: #202b24 !important; }
 
-    /* BARRE DE RECHERCHE AVEC LOUPE INTÉGRÉE */
+    /* BARRE DE RECHERCHE AVEC LOUPE */
     div[data-testid="stTextInput"] div[data-baseweb="input"] { 
-        background-color: #b6beb1 !important; 
-        border: none !important; 
-        border-radius: 4px !important;
+        background-color: #b6beb1 !important; border: none !important; border-radius: 4px !important;
     }
     div[data-testid="stTextInput"] input {
         padding-left: 40px !important;
@@ -37,57 +37,41 @@ st.markdown("""
     }
     .stTextInput p { display: none !important; } 
 
-    /* BOUTON RESET : TRANSFORMATION TOTALE EN TEXTE PUR */
-    div[data-testid="column"] button {
-        background: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-        box-shadow: none !important;
-        color: #202b24 !important;
-        font-weight: bold !important;
-        font-size: 0.58rem !important;
-        text-decoration: none !important;
-        height: auto !important;
-        min-height: 0 !important;
-        width: auto !important;
-        margin-left: auto !important;
-        margin-top: 10px !important;
-        display: block !important;
+    /* TEXTE CLIQUABLE RESET */
+    .reset-link {
+        font-weight: bold;
+        color: #202b24;
+        text-decoration: none;
+        font-size: 0.58rem;
+        display: block;
+        text-align: right;
+        margin-top: 12px;
+        transition: color 0.2s;
     }
-    div[data-testid="column"] button:hover {
-        color: #d92644 !important;
-        background: transparent !important;
-    }
+    .reset-link:hover { color: #d92644; }
 
-    /* DESIGN DES CARTES : MARGES ÉGALES ET ESPACEMENT RÉGULIER */
+    /* DESIGN DES CARTES ET MARGES */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #efede1 !important;
         border: 1px solid #b6beb1 !important;
         border-radius: 8px !important;
-        padding: 15px !important; /* Marge identique partout */
+        padding: 18px !important; /* Augmenté pour équilibrer droite/bas */
     }
 
-    /* Espacement identique entre Titre, Tags et Adresse */
-    .spot-card-content > div {
-        margin-bottom: 10px !important; 
-    }
-
-    .spot-title { color: #d92644; font-weight: bold; font-size: 0.95rem; line-height: 1.1; margin: 0 !important; }
-    .spot-addr { font-size: 0.72rem; color: #202b24; opacity: 0.8; line-height: 1.2; margin: 0 !important; }
-    
+    .spot-title { color: #d92644; font-weight: bold; font-size: 0.95rem; line-height: 1.1; margin: 0; }
+    .spot-addr { font-size: 0.72rem; color: #202b24; opacity: 0.8; line-height: 1.2; margin: 0; }
     .tag-label { 
         display: inline-block; background-color: #b6beb1; color: #202b24; padding: 1px 6px; 
         border-radius: 10px; margin-right: 3px; margin-bottom: 3px; font-size: 0.58rem; font-weight: bold; 
     }
     
-    /* BOUTON GO HORIZONTAL */
+    /* BOUTON GO */
     .stLinkButton a { 
         background-color: #7397a3 !important; color: #efede1 !important; border-radius: 4px !important; 
         font-weight: bold !important; padding: 0px 10px !important; font-size: 0.65rem !important;
         height: 18px !important; display: inline-flex !important; align-items: center !important;
-        border: none !important; text-decoration: none !important;
+        border: none !important;
     }
-    .stLinkButton a:hover { background-color: #b6beb1 !important; color: #202b24 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -97,31 +81,28 @@ try:
     df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
-    lat_col = next((c for c in df.columns if c in ['latitude', 'lat']), None)
-    lon_col = next((c for c in df.columns if c in ['longitude', 'lon']), None)
-    c_link = next((c for c in df.columns if any(w in c for w in ['map', 'lien', 'geo'])), None)
-    col_tags = next((c for c in df.columns if c in ['tags', 'tag']), None)
+    lat_col = next((c for c in df.columns if 'lat' in c), 'lat')
+    lon_col = next((c for c in df.columns if 'lon' in c), 'lon')
+    df[lat_col] = pd.to_numeric(df[lat_col].astype(str).str.replace(',', '.'), errors='coerce')
+    df[lon_col] = pd.to_numeric(df[lon_col].astype(str).str.replace(',', '.'), errors='coerce')
+    df = df.dropna(subset=[lat_col, lon_col]).reset_index(drop=True)
 
-    if lat_col and lon_col:
-        df['lat'] = pd.to_numeric(df[lat_col].astype(str).str.replace(',', '.'), errors='coerce')
-        df['lon'] = pd.to_numeric(df[lon_col].astype(str).str.replace(',', '.'), errors='coerce')
-
-    df = df.dropna(subset=['lat', 'lon']).reset_index(drop=True)
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
+    c_link = next((c for c in df.columns if any(w in c for w in ['map', 'lien'])), None)
+    col_tags = next((c for c in df.columns if 'tag' in c), None)
 
-    # --- LAYOUT HAUT ---
+    # --- LAYOUT ---
     col_map, col_filters = st.columns([1.6, 1.4])
 
     with col_filters:
         st.write("### Filtrer")
-        
         c_search_ui, c_reset_ui = st.columns([1, 0.5])
         with c_search_ui:
             search_query = st.text_input("Rechercher", placeholder="Nom du spot...", key="search_input", label_visibility="collapsed")
         with c_reset_ui:
-            # Le CSS au-dessus va transformer ce bouton en simple texte
-            st.button("TOUT RÉINITIALISER", on_click=reset_filters)
+            # TEXTE CLIQUABLE À LA PLACE DU BOUTON
+            st.markdown('<a href="/?reset=1" target="_self" class="reset-link">TOUT RÉINITIALISER</a>', unsafe_allow_html=True)
 
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
@@ -133,7 +114,6 @@ try:
                 with t_subcols[i % 4]:
                     if st.toggle(tag, key=f"toggle_{tag}"):
                         selected_tags.append(tag)
-            
             if selected_tags:
                 df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
 
@@ -146,13 +126,13 @@ try:
             initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12),
             layers=[pdk.Layer(
                 "IconLayer", data=df_filtered, get_icon="icon_data", get_size=4, size_scale=10,
-                get_position=["lon", "lat"], pickable=True, auto_highlight=True,
+                get_position=[lon_col, lat_col], pickable=True, auto_highlight=True,
                 highlight_color=[182, 190, 177, 200]
             )],
             tooltip={"html": f"<b>{{{c_name}}}</b>", "style": {"backgroundColor": "#efede1", "color": "#202b24"}}
         ))
 
-    # --- GRILLE DE CARTES ---
+    # --- GRILLE ---
     st.markdown("---")
     st.write(f"### {len(df_filtered)} spots trouvés")
     
@@ -162,20 +142,19 @@ try:
         for j, (idx, row) in enumerate(df_filtered.iloc[i:i+n_cols].iterrows()):
             with grid_cols[j]:
                 with st.container(border=True):
-                    # Header : Titre + Go
+                    # Header
                     h_col, b_col = st.columns([3.2, 1])
-                    with h_col:
-                        st.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
-                    with b_col:
-                        if c_link and pd.notna(row[c_link]):
-                            st.link_button("Go", row[c_link])
+                    with h_col: st.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
+                    with b_col: 
+                        if c_link and pd.notna(row[c_link]): st.link_button("Go", row[c_link])
                     
-                    # Tags (avec marge forcée en bas pour l'équilibre)
+                    # Tags (Espacement égal)
+                    st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True) # Espace entre titre et tags
                     if col_tags and pd.notna(row[col_tags]):
                         t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
-                        st.markdown(f"<div style='margin-top:10px; margin-bottom:10px;'>{t_html}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
                     
-                    # Adresse
+                    st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True) # Espace entre tags et adresse
                     st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
 
 except Exception as e:
