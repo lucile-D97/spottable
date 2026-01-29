@@ -6,7 +6,7 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# 2. Style CSS
+# 2. Style CSS (Nouveau : suppression des espaces entre expanders)
 st.markdown("""
     <style>
     .stApp { background-color: #efede1 !important; }
@@ -17,11 +17,12 @@ st.markdown("""
     h1 { color: #d92644 !important; margin-top: -30px !important; }
     html, body, [class*="st-"], p, div, span, label, h3 { color: #202b24 !important; }
 
+    /* RESSERRER LES EXPANDERS */
     div[data-testid="stExpander"] {
         background-color: #efede1 !important;
         border: 0.5px solid #b6beb1 !important;
-        border-radius: 8px !important;
-        margin-bottom: 10px !important;
+        border-radius: 0px !important; /* Carré pour l'effet liste */
+        margin-bottom: -1px !important; /* Supprime l'espace entre les bordures */
     }
     
     .stLinkButton a { 
@@ -70,51 +71,39 @@ try:
         df['lon'] = df.apply(lambda r: r['precise_tuple'][1] if r['precise_tuple'][1] else r['lon'], axis=1)
 
     df = df.dropna(subset=['lat', 'lon']).reset_index(drop=True)
-    c_name = next((c_name for c_name in df.columns if c_name in ['name', 'nom']), df.columns[0])
-    c_addr = next((c_addr for c_addr in df.columns if c_addr in ['address', 'adresse']), df.columns[1])
+    c_name = next((cn for cn in df.columns if cn in ['name', 'nom']), df.columns[0])
+    c_addr = next((ca for ca in df.columns if ca in ['address', 'adresse']), df.columns[1])
 
-    # --- RECHERCHE ET FILTRES ---
-    col_search, _ = st.columns([1, 2])
-    with col_search:
-        search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
-    
-    df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
+    # --- NOUVELLE DISPOSITION : COLONNE 1 (CARTE) vs COLONNE 2 (FILTRES) ---
+    col_map, col_filters = st.columns([2, 1])
 
-    st.write("### Filtrer")
-    if col_tags:
-        all_tags = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
-        t_cols = st.columns(6)
-        selected_tags = []
-        for i, tag in enumerate(all_tags):
-            with t_cols[i % 6]:
-                if st.toggle(tag, key=f"toggle_{tag}"):
-                    selected_tags.append(tag)
-        if selected_tags:
-            df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
+    with col_filters:
+        st.write("### Rechercher & Filtrer")
+        search_query = st.text_input("Rechercher", placeholder="Nom du spot...", label_visibility="collapsed")
+        
+        df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
-    # --- AFFICHAGE ---
-    col1, col2 = st.columns([2, 1])
+        if col_tags:
+            all_tags = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
+            selected_tags = []
+            # On met les toggles sur 2 colonnes à l'intérieur de la zone filtre
+            t_subcols = st.columns(2)
+            for i, tag in enumerate(all_tags):
+                with t_subcols[i % 2]:
+                    if st.toggle(tag, key=f"toggle_{tag}"):
+                        selected_tags.append(tag)
+            
+            if selected_tags:
+                df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
 
-    with col1:
-        # Couche de clustering (plus lisible)
-        layer = pdk.Layer(
-            "ClusterLayer",
-            data=df_filtered,
-            get_position=["lon", "lat"],
-            cluster_radius=40,
-            pickable=True,
-            auto_highlight=True,
-            highlight_color=[32, 43, 36, 180], # Couleur #202b24 avec transparence
-        )
-
-        # Couche d'icônes (quand on est assez proche)
+    with col_map:
         icon_data = {
             "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
             "width": 100, "height": 100, "anchorY": 100
         }
         df_filtered['icon_data'] = [icon_data] * len(df_filtered)
 
-        icon_layer = pdk.Layer(
+        layer = pdk.Layer(
             "IconLayer",
             data=df_filtered,
             get_icon="icon_data",
@@ -129,24 +118,28 @@ try:
         st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
             initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12),
-            layers=[icon_layer] if len(df_filtered) < 100 else [layer, icon_layer],
+            layers=[layer],
             tooltip={
                 "html": f"<b>{{{c_name}}}</b>",
                 "style": {"backgroundColor": "#efede1", "color": "#202b24"}
             }
         ))
 
-    with col2:
-        st.write(f"*{len(df_filtered)} spots trouvés*")
-        for _, row in df_filtered.head(50).iterrows():
-            with st.expander(f"**{row[c_name]}**"):
-                st.write(f"📍 {row[c_addr]}")
+    # --- SECTION DU BAS : LISTE DES ADRESSES (SUR TOUTE LA LARGEUR) ---
+    st.markdown("---")
+    st.write(f"### Liste des spots ({len(df_filtered)})")
+    
+    for _, row in df_filtered.head(100).iterrows(): # Limité à 100 pour la performance fluide
+        with st.expander(f"**{row[c_name]}** — {row[c_addr]}"):
+            col_info, col_btn = st.columns([3, 1])
+            with col_info:
                 if col_tags and pd.notna(row[col_tags]):
                     tags_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
                     st.markdown(tags_html, unsafe_allow_html=True)
+            with col_btn:
                 if c_link and pd.notna(row[c_link]):
-                    st.write("")
                     st.link_button("**Y aller**", row[c_link], use_container_width=True)
 
 except Exception as e:
     st.error(f"Erreur : {e}")
+    
