@@ -49,7 +49,7 @@ st.markdown("""
         font-weight: bold !important;
         color: #202b24 !important;
         text-decoration: none !important;
-        font-size: 0.58rem !important; /* TAILLE EXACTE DES TAGS */
+        font-size: 0.95rem !important; /* TAILLE EXACTE DES TAGS */
         display: block;
         text-align: right;
         margin-top: 15px; /* Ajusté pour l'alignement visuel avec l'input */
