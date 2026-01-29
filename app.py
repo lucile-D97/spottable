@@ -95,21 +95,23 @@ try:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        # Retour à l'IconLayer pour les pins
+        # Configuration de l'icône corrigée
+        icon_data = {
+            "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
+            "width": 100,
+            "height": 100,
+            "anchorY": 100
+        }
+
         layer = pdk.Layer(
             "IconLayer",
             data=df_filtered,
-            get_icon="""{
-                "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
-                "width": 100,
-                "height": 100,
-                "anchorY": 100
-            }""",
+            get_icon=lambda d: icon_data,
             get_size=4,
             size_scale=10,
             get_position=["lon", "lat"],
             pickable=True,
-            auto_highlight=True # Effet de survol foncé
+            auto_highlight=True
         )
 
         st.pydeck_chart(pdk.Deck(
@@ -124,7 +126,6 @@ try:
 
     with col2:
         st.write(f"*{len(df_filtered)} spots trouvés*")
-        # Affichage simple des expanders sans logique de clic bloquante
         for _, row in df_filtered.head(50).iterrows():
             with st.expander(f"**{row[c_name]}**"):
                 st.write(f"📍 {row[c_addr]}")
