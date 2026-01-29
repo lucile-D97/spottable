@@ -7,7 +7,7 @@ import re
 st.set_page_config(page_title="Mes spots", layout="wide")
 st.cache_data.clear() 
 
-# 2. Style CSS
+# 2. Style CSS (Inchangé)
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
@@ -112,15 +112,16 @@ try:
             initial_view_state=view_state,
             layers=[layer],
             tooltip={
-                "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
+                "html": f"<div>{{{c_name}}}</div>", # Suppression de la balise <b>
                 "style": {
                     "backgroundColor": "#efede1",
                     "color": "#202b24",
-                    "fontFamily": "'Source Sans Pro', sans-serif",
+                    "fontFamily": "sans-serif", # Utilise la police système sans-serif
                     "fontSize": "14px",
+                    "fontWeight": "normal",     # Force une graisse normale identique aux adresses
                     "padding": "10px",
                     "borderRadius": "8px",
-                    "boxShadow": "0px 4px 10px rgba(0,0,0,0.1)" # Ombre douce pour remplacer la bordure
+                    "boxShadow": "0px 2px 6px rgba(0,0,0,0.1)" 
                 }
             }
         ))
