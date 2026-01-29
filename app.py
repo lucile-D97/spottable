@@ -6,12 +6,15 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# Fonction pour réinitialiser tous les filtres
-def reset_filters():
+# --- LOGIQUE DE RÉINITIALISATION ---
+# On vérifie si "reset" est dans l'URL. Si oui, on vide tout et on recharge.
+if "reset" in st.query_params:
+    st.query_params.clear()
     st.session_state.search_input = ""
     for key in list(st.session_state.keys()):
         if key.startswith("toggle_"):
             st.session_state[key] = False
+    st.rerun()
 
 # 2. Style CSS
 st.markdown("""
@@ -41,13 +44,13 @@ st.markdown("""
     }
     .stTextInput p { display: none !important; } 
 
-    /* TEXTE CLIQUABLE RESET (Même typo que les tags) */
+    /* TEXTE CLIQUABLE RESET (Stylé selon tes tags) */
     .reset-link {
         font-family: inherit;
         font-weight: bold !important;
         color: #202b24 !important;
-        text-decoration: none !important; /* Pas souligné */
-        font-size: 0.75rem !important; /* Un peu plus grand que les tags (0.58rem) */
+        text-decoration: none !important;
+        font-size: 0.75rem !important; /* Un peu plus grand que les tags */
         display: block;
         text-align: right;
         margin-top: 12px;
@@ -55,16 +58,15 @@ st.markdown("""
         cursor: pointer;
     }
     .reset-link:hover { 
-        color: #7397a3 !important; /* Couleur au survol */
-        text-decoration: none !important;
+        color: #7397a3 !important; /* Couleur demandée au survol */
     }
 
-    /* DESIGN DES CARTES : MARGES ÉGALES */
+    /* DESIGN DES CARTES : MARGES ÉGALES ET ESPACEMENT */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #efede1 !important;
         border: 1px solid #b6beb1 !important;
         border-radius: 8px !important;
-        padding: 15px !important; /* Marge égale partout */
+        padding: 18px !important; /* Marges uniformes */
     }
 
     .spot-title { 
@@ -74,7 +76,7 @@ st.markdown("""
         line-height: 1.1;
     }
 
-    .spot-addr { font-size: 0.72rem; color: #202b24; margin-top: 4px; opacity: 0.8; line-height: 1.2; }
+    .spot-addr { font-size: 0.72rem; color: #202b24; opacity: 0.8; line-height: 1.2; }
     
     .tag-label { 
         display: inline-block; 
@@ -100,6 +102,7 @@ st.markdown("""
         display: inline-flex !important;
         align-items: center !important;
         border: none !important;
+        text-decoration: none !important;
     }
     .stLinkButton a:hover {
         background-color: #b6beb1 !important;
@@ -134,11 +137,12 @@ try:
     with col_filters:
         st.write("### Filtrer")
         
-        c_search_ui, c_reset_ui = st.columns([1, 0.5])
+        c_search_ui, c_reset_ui = st.columns([1, 0.6])
         with c_search_ui:
             search_query = st.text_input("Rechercher", placeholder="Nom du spot...", key="search_input", label_visibility="collapsed")
         with c_reset_ui:
-            st.button("TOUT RÉINITIALISER", on_click=reset_filters)
+            # ON REMPLACE LE BOUTON PAR UN LIEN CLIQUABLE
+            st.markdown('<a href="/?reset=1" target="_self" class="reset-link">TOUT RÉINITIALISER</a>', unsafe_allow_html=True)
 
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
@@ -186,9 +190,14 @@ try:
                         if c_link and pd.notna(row[c_link]):
                             st.link_button("Go", row[c_link])
                     
+                    # Espacement égal entre Titre / Tags / Adresse
+                    st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+                    
                     if col_tags and pd.notna(row[col_tags]):
                         t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
-                        st.markdown(f"<div style='margin-top:5px; margin-bottom:2px;'>{t_html}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
+                    
+                    st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
                     
                     st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
 
