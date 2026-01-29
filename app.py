@@ -115,14 +115,14 @@ try:
         # CENTRAGE FIXE SUR PARIS
         view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
 
-        # Correction de la couche IconLayer (Suppression de l'erreur JSON)
-        icon_data = {
+        # Definition propre de l'icone pour Pydeck
+        icon_config = {
             "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
             "width": 100,
             "height": 100,
             "anchorY": 100
         }
-        df_filtered["icon_data"] = [icon_data for _ in range(len(df_filtered))]
+        df_filtered["icon_data"] = [icon_config for _ in range(len(df_filtered))]
 
         layer = pdk.Layer(
             "IconLayer",
@@ -150,7 +150,7 @@ try:
                 if col_tags and pd.notna(row[col_tags]):
                     tags = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
                     st.markdown(tags, unsafe_allow_html=True)
-                if c_link and pd.notna(row[row[c_link]]): # Petite sécurité sur le lien
+                if c_link and pd.notna(row[c_link]):
                     st.link_button("**Y aller**", row[c_link], use_container_width=True)
 
 except Exception as e:
