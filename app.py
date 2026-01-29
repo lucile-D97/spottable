@@ -6,20 +6,20 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# Initialisation de la vue dans le Session State
+# Initialisation de la vue
 if 'view_state' not in st.session_state:
     st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
 
-# 2. Style CSS
+# 2. Style CSS (Forçage du curseur et design)
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
     header[data-testid="stHeader"] {{ display: none !important; }}
-    div[data-testid="stDecoration"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
 
-    /* Curseur pointer sur la carte */
-    .deckgl-wrapper, .deckgl-overlay {{ cursor: pointer !important; }}
+    /* FORCE LE POINTEUR SUR LA CARTE ET LES ÉLÉMENTS INTERACTIFS */
+    .deckgl-wrapper {{ cursor: crosshair !important; }}
+    canvas.deckgl-overlay {{ cursor: pointer !important; }}
 
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
@@ -36,13 +36,11 @@ st.markdown(f"""
         color: #efede1 !important; 
         border-radius: 8px !important; 
         font-weight: bold !important; 
-        text-decoration: none !important;
         display: flex !important;
         justify-content: center !important;
     }}
     
     .tag-label {{ display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }}
-    
     div[data-testid="stTextInput"] div[data-baseweb="input"] {{ background-color: #b6beb1 !important; border: none !important; }}
     div[role="switch"] {{ background-color: #b6beb1 !important; }}
     div[aria-checked="true"][role="switch"] {{ background-color: #d92644 !important; }}
@@ -58,7 +56,6 @@ def get_precise_coords(url):
 st.title("Mes spots")
 
 try:
-    # 3. Données
     df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
@@ -80,11 +77,9 @@ try:
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
-    # --- RECHERCHE ET FILTRES ---
     col_search, _ = st.columns([1, 2])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
-    
     df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
     st.write("### Filtrer")
@@ -106,20 +101,31 @@ try:
         icon_config = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
         df_filtered["icon_data"] = [icon_config for _ in range(len(df_filtered))]
 
-        layer = pdk.Layer(
+        # 1. Couche des pins (visuelle)
+        layer_icons = pdk.Layer(
             "IconLayer",
             data=df_filtered,
             get_icon="icon_data",
-            get_size=3,
+            get_size=4,
             size_scale=10,
             get_position=["lon", "lat"],
+            pickable=False,
+        )
+
+        # 2. Couche invisible (capte le clic et le curseur)
+        layer_interact = pdk.Layer(
+            "ScatterplotLayer",
+            data=df_filtered,
+            get_position=["lon", "lat"],
+            get_radius=40,
+            get_fill_color=[0, 0, 0, 0], # Invisible
             pickable=True,
         )
 
         map_selection = st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
             initial_view_state=st.session_state.view_state,
-            layers=[layer],
+            layers=[layer_icons, layer_interact],
             tooltip={
                 "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
                 "style": {"backgroundColor": "#efede1", "color": "#202b24", "fontSize": "14px", "padding": "10px", "borderRadius": "8px", "boxShadow": "0px 2px 6px rgba(0,0,0,0.1)"}
@@ -131,12 +137,10 @@ try:
         
         if selected_objects:
             clicked_spot = selected_objects[0]
-            # Zoom auto
             st.session_state.view_state = pdk.ViewState(
                 latitude=clicked_spot['lat'], 
                 longitude=clicked_spot['lon'], 
-                zoom=16, 
-                pitch=0
+                zoom=16, pitch=0
             )
             df_display = df_filtered[df_filtered[c_name] == clicked_spot[c_name]]
             if st.button("Tout réafficher ↺", use_container_width=True):
