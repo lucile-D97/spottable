@@ -7,7 +7,7 @@ import re
 st.set_page_config(page_title="Mes spots", layout="wide")
 st.cache_data.clear() 
 
-# 2. Style CSS (Inchangé)
+# 2. Style CSS
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
@@ -77,7 +77,6 @@ try:
     df = df.dropna(subset=['lat', 'lon'])
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
-    col_tags = next((c for c in df.columns if c == 'tags'), None)
 
     col_search, _ = st.columns([1, 2])
     with col_search:
@@ -92,9 +91,7 @@ try:
 
         icon_config = {
             "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
-            "width": 100,
-            "height": 100,
-            "anchorY": 100
+            "width": 100, "height": 100, "anchorY": 100
         }
         df_filtered["icon_data"] = [icon_config for _ in range(len(df_filtered))]
 
@@ -110,20 +107,20 @@ try:
             collision_group="spots"
         )
 
-        # TOOLTIP MIS À JOUR
         st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
             initial_view_state=view_state,
             layers=[layer],
             tooltip={
-                "html": f"<b>{{{c_name}}}</b>",
+                "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
                 "style": {
-                    "backgroundColor": "#f0f2f6",
+                    "backgroundColor": "#efede1",
                     "color": "#202b24",
-                    "fontFamily": "sans-serif",
-                    "fontSize": "13px",
-                    "padding": "8px",
-                    "borderRadius": "5px"
+                    "fontFamily": "'Source Sans Pro', sans-serif",
+                    "fontSize": "14px",
+                    "padding": "10px",
+                    "borderRadius": "8px",
+                    "boxShadow": "0px 4px 10px rgba(0,0,0,0.1)" # Ombre douce pour remplacer la bordure
                 }
             }
         ))
