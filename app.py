@@ -10,16 +10,20 @@ st.set_page_config(page_title="Mes spots", layout="wide")
 if 'view_state' not in st.session_state:
     st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0)
 
-# 2. Style CSS
+# 2. Style CSS (Injection de force pour le curseur)
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
     header[data-testid="stHeader"] {{ display: none !important; }}
     .main .block-container {{ padding-top: 2rem !important; }}
 
-    /* FORCE LE CURSEUR POINTER (doigt tendu) */
-    canvas.deckgl-overlay {{ cursor: pointer !important; }}
-    .deckgl-wrapper {{ cursor: pointer !important; }}
+    /* FORCE LE CURSEUR POINTER SUR LA CARTE ET SON CONTENEUR */
+    [data-testid="stDeckGlChart"] {{
+        cursor: pointer !important;
+    }}
+    .deckgl-wrapper, .deckgl-overlay, canvas {{
+        cursor: pointer !important;
+    }}
 
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
@@ -78,7 +82,7 @@ try:
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
-    # --- FILTRES ---
+    # --- RECHERCHE ET FILTRES ---
     col_search, _ = st.columns([1, 2])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
@@ -100,15 +104,16 @@ try:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        # REMPLACEMENT PAR SCATTERPLOTLAYER (Disques rouges)
+        # On utilise le ScatterplotLayer qui est reconnu (le point devient noir)
         layer = pdk.Layer(
             "ScatterplotLayer",
             data=df_filtered,
             get_position=["lon", "lat"],
-            get_color=[217, 38, 68, 200], # #d92644 avec un peu d'opacité
-            get_radius=80, # Taille fixe pour bien les voir
+            get_color=[217, 38, 68, 200], 
+            get_radius=80, 
             pickable=True,
-            auto_highlight=True, # Ajoute un effet brillant au survol
+            auto_highlight=True, 
+            highlight_color=[0, 0, 0, 255] # Devient noir au survol comme vous l'avez vu
         )
 
         map_selection = st.pydeck_chart(pdk.Deck(
@@ -126,7 +131,7 @@ try:
         
         if selected_objects:
             clicked_spot = selected_objects[0]
-            # Zoom auto
+            # ON MISE A JOUR LE ZOOM ICI
             st.session_state.view_state = pdk.ViewState(
                 latitude=clicked_spot['lat'], 
                 longitude=clicked_spot['lon'], 
@@ -134,6 +139,7 @@ try:
                 pitch=0
             )
             df_display = df_filtered[df_filtered[c_name] == clicked_spot[c_name]]
+            
             if st.button("Tout réafficher ↺", use_container_width=True):
                 st.session_state.view_state = pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12)
                 st.rerun()
