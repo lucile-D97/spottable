@@ -89,17 +89,17 @@ try:
         }
         df_filtered["icon_data"] = [icon_config for _ in range(len(df_filtered))]
 
+        # Utilisation simplifiée de l'extension de collision
         layer = pdk.Layer(
             "IconLayer",
             data=df_filtered,
             get_icon="icon_data",
-            get_size=3,          # Taille diminuée (était à 4)
-            size_scale=8,        # Échelle diminuée (était à 10)
+            get_size=2.5,        # Encore un peu plus petit pour la clarté
+            size_scale=8,
             get_position=["lon", "lat"],
             pickable=True,
             opacity=0.9,
-            # Supprime les pins qui se chevauchent pour aérer la carte
-            extensions=[pdk.types.LayerExtension("CollisionFilterExtension")],
+            # Paramètres de collision simplifiés
             collision_enabled=True,
             collision_group="spots"
         )
