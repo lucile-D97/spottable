@@ -6,7 +6,17 @@ import re
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
 
-# 2. Style CSS (Identique au tien, sans modification)
+# --- NOUVELLE PARTIE : MÉMOIRE DE LA CARTE ---
+# On initialise le view_state dans le session_state pour éviter la réinitialisation
+if 'view_state' not in st.session_state:
+    st.session_state.view_state = pdk.ViewState(
+        latitude=48.8566, 
+        longitude=2.3522, 
+        zoom=12, 
+        pitch=0
+    )
+
+# 2. Style CSS (Inchangé, fidèle à tes demandes)
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #efede1 !important; }}
@@ -15,12 +25,27 @@ st.markdown(f"""
     .main .block-container {{ padding-top: 2rem !important; }}
     h1 {{ color: #d92644 !important; margin-top: -30px !important; }}
     html, body, [class*="st-"], p, div, span, label, h3 {{ color: #202b24 !important; }}
-    div[data-testid="stExpander"] {{ background-color: #efede1 !important; border: 0.5px solid #b6beb1 !important; border-radius: 8px !important; margin-bottom: 10px !important; }}
-    .stLinkButton a {{ background-color: #7397a3 !important; color: #efede1 !important; border-radius: 8px !important; font-weight: bold !important; display: flex !important; justify-content: center !important; }}
+    div[data-testid="stExpander"] {{ 
+        background-color: #efede1 !important; 
+        border: 0.5px solid #b6beb1 !important; 
+        border-radius: 8px !important; 
+        margin-bottom: 10px !important; 
+    }}
+    .stLinkButton a {{ 
+        background-color: #7397a3 !important; 
+        color: #efede1 !important; 
+        border-radius: 8px !important; 
+        font-weight: bold !important; 
+        display: flex !important; 
+        justify-content: center !important; 
+    }}
     .tag-label {{ display: inline-block; background-color: #b6beb1; color: #202b24; padding: 2px 10px; border-radius: 15px; margin-right: 5px; font-size: 0.75rem; font-weight: bold; }}
     div[data-testid="stTextInput"] div[data-baseweb="input"] {{ background-color: #b6beb1 !important; border: none !important; }}
     div[role="switch"] {{ background-color: #b6beb1 !important; }}
     div[aria-checked="true"][role="switch"] {{ background-color: #d92644 !important; }}
+    
+    /* Tentative de forçage du curseur */
+    .deckgl-wrapper {{ cursor: pointer !important; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -33,6 +58,7 @@ def get_precise_coords(url):
 st.title("Mes spots")
 
 try:
+    # 3. Données
     df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
@@ -54,7 +80,7 @@ try:
     c_name = next((c for c in df.columns if c in ['name', 'nom']), df.columns[0])
     c_addr = next((c for c in df.columns if c in ['address', 'adresse']), df.columns[1])
 
-    # --- FILTRES ---
+    # --- RECHERCHE ET FILTRES ---
     col_search, _ = st.columns([1, 2])
     with col_search:
         search_query = st.text_input("Rechercher", placeholder="Rechercher un spot", label_visibility="collapsed")
@@ -72,7 +98,7 @@ try:
         if selected_tags:
             df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
 
-    # --- CARTE ---
+    # --- AFFICHAGE ---
     col1, col2 = st.columns([2, 1])
 
     with col1:
@@ -84,12 +110,13 @@ try:
             get_radius=80, 
             pickable=True,
             auto_highlight=True,
+            highlight_color=[0, 0, 0, 255]
         )
 
-        # ON ESSAIE DE DÉCLENCHER LE POPUP VIA ST.DIALOG (Action native au clic)
+        # On utilise st.session_state.view_state pour garder la position
         map_selection = st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-            initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12),
+            initial_view_state=st.session_state.view_state,
             layers=[layer],
             tooltip={
                 "html": f"<div style='color: #202b24;'><b>{{{c_name}}}</b></div>",
@@ -97,19 +124,18 @@ try:
             }
         ), on_select="rerun", selection_mode="single-object")
 
-    # --- GESTION DU POP-UP (L'ACTION AU CLIC) ---
+    # --- GESTION DU POP-UP ---
     selected = map_selection.selection.get("objects", [])
     if selected:
-        # Cette fonction st.dialog crée une véritable fenêtre pop-up au centre de l'écran
         @st.dialog(f"Détails du spot")
         def show_details(spot):
             st.subheader(spot[c_name])
             st.write(f"📍 {spot[c_addr]}")
             if c_link and pd.notna(spot[c_link]):
-                st.link_button("Ouvrir dans Maps", spot[c_link], use_container_width=True)
+                st.link_button("Ouvrir dans Google Maps", spot[c_link], use_container_width=True)
             if st.button("Fermer"):
                 st.rerun()
-
+        
         show_details(selected[0])
 
     with col2:
