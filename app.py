@@ -25,7 +25,7 @@ st.markdown("""
     h1 { color: #d92644 !important; margin-bottom: 20px !important; }
     html, body, [class*="st-"], p, div, span, label, h3 { color: #202b24 !important; }
 
-    /* BARRE DE RECHERCHE */
+    /* BARRE DE RECHERCHE AVEC LOUPE */
     div[data-testid="stTextInput"] div[data-baseweb="input"] { 
         background-color: #b6beb1 !important; 
         border: none !important; 
@@ -39,7 +39,7 @@ st.markdown("""
     }
     .stTextInput p { display: none !important; } 
 
-    /* RESET LINK */
+    /* TEXTE CLIQUABLE RESET */
     .reset-link {
         font-family: inherit;
         font-weight: bold !important;
@@ -59,7 +59,7 @@ st.markdown("""
         background-color: #efede1 !important;
         border: 1px solid #b6beb1 !important;
         border-radius: 8px !important;
-        padding: 15px 15px 12px 15px !important; /* Ajout d'espace en bas */
+        padding: 15px !important;
     }
 
     .spot-title { color: #d92644; font-weight: bold; font-size: 0.95rem; line-height: 1.1; margin-bottom: 4px; }
@@ -83,13 +83,14 @@ st.markdown("""
         align-items: center !important;
         border: none !important;
         text-decoration: none !important;
+        transition: background-color 0.2s !important;
     }
     .stLinkButton a:hover {
         background-color: #b6beb1 !important;
         color: #202b24 !important;
     }
 
-    /* Centrage bouton */
+    /* Centre verticalement le contenu de la colonne bouton */
     [data-testid="column"] {
         display: flex;
         flex-direction: column;
@@ -117,7 +118,7 @@ try:
     c_name = next((cn for cn in df.columns if cn in ['name', 'nom']), df.columns[0])
     c_addr = next((ca for ca in df.columns if ca in ['address', 'adresse']), df.columns[1])
 
-    # --- LAYOUT HAUT ---
+    # --- LAYOUT DU HAUT ---
     col_map, col_filters = st.columns([1.6, 1.4])
 
     with col_filters:
@@ -167,21 +168,22 @@ try:
         for j, (idx, row) in enumerate(df_filtered.iloc[i:i+n_cols].iterrows()):
             with grid_cols[j]:
                 with st.container(border=True):
+                    # DEUX COLONNES DANS LA CARTE : Texte à gauche (4), Bouton à droite (1)
                     txt_col, btn_col = st.columns([4, 1])
                     
                     with txt_col:
+                        # 1. Nom
                         st.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
+                        # 2. Adresse (resserrée sous le nom)
                         st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
-                        
+                        # 3. Tags (en bas du bloc texte)
                         if col_tags and pd.notna(row[col_tags]):
-                            # Marge diminuée ici (4px)
-                            st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
+                            st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
                             t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
                             st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
-                            # Petit espace final pour ne pas coller au bord
-                            st.markdown("<div style='height:2px;'></div>", unsafe_allow_html=True)
                     
                     with btn_col:
+                        # Bouton Go centré verticalement par le CSS
                         if c_link and pd.notna(row[c_link]):
                             st.link_button("Go", row[c_link])
 
