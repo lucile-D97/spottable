@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import pydeck as pdk
-import re
 
 # 1. Configuration de la page
 st.set_page_config(page_title="Mes spots", layout="wide")
@@ -28,14 +27,9 @@ st.markdown("""
     /* FILTRES TAGS RESSERRÉS */
     div[data-testid="stCheckbox"] { margin-bottom: -15px !important; }
     
-    /* STYLE DES ACCORDÉONS (Titres identiques au tag A Tester) */
+    /* STYLE DES ACCORDÉONS */
     .stExpander { border: none !important; background-color: transparent !important; }
-    .stExpander summary p { 
-        font-weight: bold !important; 
-        color: #202b24 !important; 
-        font-size: 0.85rem !important; 
-        text-transform: none !important;
-    }
+    .stExpander summary p { font-weight: bold !important; color: #202b24 !important; font-size: 0.85rem !important; }
 
     /* BARRE DE RECHERCHE */
     div[data-testid="stTextInput"] div[data-baseweb="input"] { background-color: #b6beb1 !important; border: none !important; border-radius: 4px !important; }
@@ -44,47 +38,28 @@ st.markdown("""
         background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23B6BEB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
         background-repeat: no-repeat; background-position: 12px center;
     }
-    .stTextInput p { display: none !important; } 
 
     /* RESET LINK */
     .reset-link {
         font-family: inherit; font-weight: bold !important; color: #202b24 !important;
         text-decoration: none !important; font-size: 0.85rem !important; 
-        display: block; text-align: right; margin-top: 10px; transition: color 0.2s; cursor: pointer;
+        display: block; text-align: right; margin-top: 10px; cursor: pointer;
     }
-    .reset-link:hover { color: #7397a3 !important; }
 
     /* DESIGN DES CARTES */
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        background-color: #efede1 !important;
-        border: 1px solid #b6beb1 !important;
-        border-radius: 8px !important;
-        padding: 15px 15px 12px 15px !important;
-        min-height: 150px !important;
-        display: flex !important;
-        flex-direction: column !important;
+        background-color: #efede1 !important; border: 1px solid #b6beb1 !important;
+        border-radius: 8px !important; padding: 15px !important;
+        min-height: 150px !important; display: flex !important; flex-direction: column !important;
         justify-content: space-between !important;
     }
 
-    .spot-title { color: #d92644; font-weight: bold; font-size: 0.95rem; line-height: 1.1; margin-bottom: 4px; }
-    .spot-addr { font-size: 0.72rem; color: #202b24; opacity: 0.8; line-height: 1.2; }
-    
-    .tag-label { 
-        display: inline-block; background-color: #b6beb1; color: #202b24; padding: 1px 6px; 
-        border-radius: 10px; margin-right: 3px; margin-bottom: 3px; font-size: 0.58rem; font-weight: bold; 
-    }
-    
-    /* BOUTON GO */
-    .stLinkButton a { 
-        background-color: #7397a3 !important; color: #efede1 !important; border-radius: 4px !important; 
-        font-weight: bold !important; padding: 0px 10px !important; font-size: 0.65rem !important;
-        height: 18px !important; display: inline-flex !important; align-items: center !important;
-        border: none !important; text-decoration: none !important;
-    }
-    .stLinkButton a:hover { background-color: #b6beb1 !important; color: #202b24 !important; }
+    .spot-title { color: #d92644; font-weight: bold; font-size: 0.95rem; line-height: 1.1; }
+    .spot-addr { font-size: 0.72rem; color: #202b24; opacity: 0.8; }
+    .tag-label { display: inline-block; background-color: #b6beb1; color: #202b24; padding: 1px 6px; border-radius: 10px; font-size: 0.58rem; font-weight: bold; margin-right: 3px; }
 
-    /* Centrage bouton */
-    [data-testid="column"] { display: flex; flex-direction: column; justify-content: center; }
+    /* BOUTON GO */
+    .stLinkButton a { background-color: #7397a3 !important; color: #efede1 !important; border-radius: 4px !important; font-weight: bold !important; padding: 0px 10px !important; font-size: 0.65rem !important; height: 18px !important; display: inline-flex !important; align-items: center !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -94,20 +69,19 @@ try:
     df = pd.read_csv("Spottable v4.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
-    lat_col = next((cn for cn in df.columns if cn in ['latitude', 'lat']), None)
-    lon_col = next((cn for cn in df.columns if cn in ['longitude', 'lon']), None)
-    c_link = next((cn for cn in df.columns if any(w in cn for w in ['map', 'lien', 'geo'])), None)
+    lat_col = next(cn for cn in df.columns if cn in ['latitude', 'lat'])
+    lon_col = next(cn for cn in df.columns if cn in ['longitude', 'lon'])
+    c_link = next((cn for cn in df.columns if any(w in cn for w in ['map', 'lien'])), None)
     col_tags = next((cn for cn in df.columns if cn in ['tags', 'tag']), None)
 
-    if lat_col and lon_col:
-        df['lat'] = pd.to_numeric(df[lat_col].astype(str).str.replace(',', '.'), errors='coerce')
-        df['lon'] = pd.to_numeric(df[lon_col].astype(str).str.replace(',', '.'), errors='coerce')
-
+    df['lat'] = pd.to_numeric(df[lat_col].astype(str).str.replace(',', '.'), errors='coerce')
+    df['lon'] = pd.to_numeric(df[lon_col].astype(str).str.replace(',', '.'), errors='coerce')
     df = df.dropna(subset=['lat', 'lon']).reset_index(drop=True)
-    c_name = next((cn for cn in df.columns if cn in ['name', 'nom']), df.columns[0])
-    c_addr = next((ca for ca in df.columns if ca in ['address', 'adresse']), df.columns[1])
 
-    # --- LAYOUT HAUT ---
+    c_name = next(cn for cn in df.columns if cn in ['name', 'nom'])
+    c_addr = next(ca for ca in df.columns if ca in ['address', 'adresse'])
+
+    # --- LAYOUT FILTRES ---
     col_map, col_filters = st.columns([1.6, 1.4])
 
     with col_filters:
@@ -120,58 +94,81 @@ try:
 
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
-        # --- FILTRES TAGS ---
         if col_tags:
             all_tags_list = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
-            tag_a_tester = "A tester"
+            
+            # Ligne : A tester / Testé + Sélecteur Logique
+            c_status, c_logic = st.columns([1, 1])
+            with c_status:
+                col_a, col_b = st.columns(2)
+                with col_a: t_a_tester = st.toggle("À tester", key="toggle_a_tester")
+                with col_b: t_teste = st.toggle("Testé", key="toggle_teste")
+            
+            with c_logic:
+                logic = st.radio("Logique de filtre", ["Exclusif (ET)", "Cumulatif (OU)"], horizontal=True, label_visibility="collapsed", index=0)
+
+            st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+
+            # Catégories
             tag_lieu_list = ["Restaurant", "Bar", "Café", "Pâtisserie", "Boulangerie", "Glacier", "Marché", "Traiteur"]
             selected_tags = []
 
-            # 1. A TESTER (Toujours en haut)
-            if tag_a_tester in all_tags_list:
-                if st.toggle(tag_a_tester, key=f"toggle_{tag_a_tester}"):
-                    selected_tags.append(tag_a_tester)
-            
-            # ESPACEMENT SUPPLÉMENTAIRE
-            st.markdown("<div style='height:15px;'></div>", unsafe_allow_html=True)
-            
-            # 2. TYPE DE LIEU (Accordéon)
             with st.expander("Type de lieu"):
                 t_cols_lieu = st.columns(4)
-                present_lieu_tags = [t for t in tag_lieu_list if t in all_tags_list]
-                for i, tag in enumerate(present_lieu_tags):
+                for i, tag in enumerate([t for t in tag_lieu_list if t in all_tags_list]):
                     with t_cols_lieu[i % 4]:
-                        if st.toggle(tag, key=f"toggle_{tag}"):
-                            selected_tags.append(tag)
+                        if st.toggle(tag, key=f"toggle_{tag}"): selected_tags.append(tag)
 
-            # 3. TYPE DE CUISINE (Accordéon)
             with st.expander("Type de cuisine"):
                 t_cols_cuisine = st.columns(4)
-                other_tags = [t for t in all_tags_list if t != tag_a_tester and t not in tag_lieu_list]
-                for i, tag in enumerate(other_tags):
+                for i, tag in enumerate([t for t in all_tags_list if t != "A tester" and t not in tag_lieu_list]):
                     with t_cols_cuisine[i % 4]:
-                        if st.toggle(tag, key=f"toggle_{tag}"):
-                            selected_tags.append(tag)
+                        if st.toggle(tag, key=f"toggle_{tag}"): selected_tags.append(tag)
             
+            # --- LOGIQUE DE FILTRAGE AVANCÉE ---
+            # Filtre Statut (À tester / Testé)
+            if t_a_tester and not t_teste:
+                df_filtered = df_filtered[df_filtered[col_tags].str.contains("A tester", na=False)]
+            elif t_teste and not t_a_tester:
+                df_filtered = df_filtered[~df_filtered[col_tags].str.contains("A tester", na=False)]
+            elif t_a_tester and t_teste:
+                pass # Les deux cochés = tout afficher
+
+            # Filtre Tags (ET vs OU)
             if selected_tags:
-                df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
+                def check_tags(row_tags):
+                    if pd.isna(row_tags): return False
+                    row_list = [t.strip() for t in str(row_tags).split(',')]
+                    if "Exclusif" in logic:
+                        return all(t in row_list for t in selected_tags)
+                    else:
+                        return any(t in row_list for t in selected_tags)
+                
+                df_filtered = df_filtered[df_filtered[col_tags].apply(check_tags)]
 
     with col_map:
-        icon_data = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
-        df_filtered['icon_data'] = [icon_data] * len(df_filtered)
+        # --- CALCUL DU CENTRAGE ---
+        if not df_filtered.empty:
+            center_lat = df_filtered['lat'].mean()
+            center_lon = df_filtered['lon'].mean()
+            zoom_level = 12 if len(df_filtered) > 1 else 14
+        else:
+            center_lat, center_lon, zoom_level = 48.8566, 2.3522, 11
+
+        view_state = pdk.ViewState(latitude=center_lat, longitude=center_lon, zoom=zoom_level, pitch=0)
 
         st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-            initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12),
+            initial_view_state=view_state,
             layers=[pdk.Layer(
-                "IconLayer", data=df_filtered, get_icon="icon_data", get_size=4, size_scale=10,
-                get_position=["lon", "lat"], pickable=True, auto_highlight=True,
-                highlight_color=[182, 190, 177, 200]
+                "IconLayer", data=df_filtered, 
+                get_icon='{"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}',
+                get_size=4, size_scale=10, get_position=["lon", "lat"], pickable=True
             )],
-            tooltip={"html": f"<b>{{{c_name}}}</b>", "style": {"backgroundColor": "#efede1", "color": "#202b24"}}
+            tooltip={"html": f"<b>{{{c_name}}}</b>"}
         ))
 
-    # --- GRILLE DE SPOTS ---
+    # --- GRILLE ---
     st.markdown("---")
     st.write(f"### {len(df_filtered)} spots trouvés")
     
@@ -186,12 +183,10 @@ try:
                         st.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
                         st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
                         if col_tags and pd.notna(row[col_tags]):
-                            st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
                             t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
-                            st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='margin-top:4px;'>{t_html}</div>", unsafe_allow_html=True)
                     with btn_col:
-                        if c_link and pd.notna(row[c_link]):
-                            st.link_button("Go", row[c_link])
+                        if c_link and pd.notna(row[c_link]): st.link_button("Go", row[c_link])
 
 except Exception as e:
     st.error(f"Erreur : {e}")
