@@ -1,4 +1,5 @@
 import streamlit as st
+import pdk
 import pandas as pd
 import pydeck as pdk
 import re
@@ -20,10 +21,26 @@ st.markdown("""
     <style>
     .stApp { background-color: #efede1 !important; }
     header[data-testid="stHeader"], div[data-testid="stDecoration"] { display: none !important; }
-    .main .block-container { padding-top: 2rem !important; }
+    
+    /* SUPPRESSION DES ESPACES HAUT DE PAGE */
+    .main .block-container { 
+        padding-top: 1rem !important; 
+        padding-bottom: 1rem !important;
+    }
 
-    h1 { color: #d92644 !important; margin-bottom: 20px !important; }
+    /* TITRE PRINCIPAL RESSERRÉ */
+    h1 { 
+        color: #d92644 !important; 
+        margin-top: 0px !important; 
+        margin-bottom: 1rem !important; 
+        padding-top: 0px !important;
+    }
+
     html, body, [class*="st-"], p, div, span, label, h3 { color: #202b24 !important; }
+
+    /* RESSERRAGE AVANT LA LISTE DES SPOTS */
+    hr { margin-top: 1rem !important; margin-bottom: 1rem !important; }
+    .stMarkdown h3 { margin-top: 0px !important; margin-bottom: 0.5rem !important; }
 
     /* FILTRES TAGS RESSERRÉS */
     div[data-testid="stCheckbox"] { margin-bottom: -15px !important; }
@@ -126,7 +143,6 @@ try:
             tag_a_tester_label = "A tester"
             tag_lieu_list = ["Restaurant", "Bar", "Café", "Pâtisserie", "Boulangerie", "Glacier", "Marché", "Traiteur"]
             
-            # 1. Ligne Statut + Logique (À tester, Testé, ET/OU)
             c_stat, c_log = st.columns([1.2, 1])
             with c_stat:
                 ca, cb = st.columns(2)
@@ -137,10 +153,8 @@ try:
                 logic = st.radio("Logique", ["Exclusif", "Cumulatif"], index=0, horizontal=True, label_visibility="collapsed")
 
             selected_tags = []
-            
             st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
             
-            # 2. TYPE DE LIEU (Accordéon)
             with st.expander("Type de lieu"):
                 t_cols_lieu = st.columns(4)
                 present_lieu_tags = [t for t in tag_lieu_list if t in all_tags_list]
@@ -149,7 +163,6 @@ try:
                         if st.toggle(tag, key=f"toggle_{tag}"):
                             selected_tags.append(tag)
 
-            # 3. TYPE DE CUISINE (Accordéon)
             with st.expander("Type de cuisine"):
                 t_cols_cuisine = st.columns(4)
                 other_tags = [t for t in all_tags_list if t != tag_a_tester_label and t not in tag_lieu_list]
@@ -158,24 +171,16 @@ try:
                         if st.toggle(tag, key=f"toggle_{tag}"):
                             selected_tags.append(tag)
             
-            # --- APPLICATION DES FILTRES ---
-            # Filtre Statut (Logique : À tester ou Testé)
             if t_a_tester and not t_teste:
                 df_filtered = df_filtered[df_filtered[col_tags].str.contains(tag_a_tester_label, na=False)]
             elif t_teste and not t_a_tester:
-                # On exclut ceux qui ont le tag "A tester"
                 df_filtered = df_filtered[~df_filtered[col_tags].str.contains(tag_a_tester_label, na=False)]
             
-            # Filtre par Tags (ET vs OU)
             if selected_tags:
                 def filter_logic(row_tags):
                     if pd.isna(row_tags): return False
                     row_list = [t.strip() for t in str(row_tags).split(',')]
-                    if logic == "Exclusif": # ET
-                        return all(t in row_list for t in selected_tags)
-                    else: # Cumulatif (OU)
-                        return any(t in row_list for t in selected_tags)
-                
+                    return all(t in row_list for t in selected_tags) if logic == "Exclusif" else any(t in row_list for t in selected_tags)
                 df_filtered = df_filtered[df_filtered[col_tags].apply(filter_logic)]
 
     with col_map:
