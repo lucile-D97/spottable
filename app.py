@@ -14,7 +14,7 @@ if "reset" in st.query_params:
             st.session_state[key] = False
     st.rerun()
 
-# 2. Style CSS
+# 2. Style CSS (Design et alignement horizontal)
 st.markdown("""
     <style>
     .stApp { background-color: #efede1 !important; }
@@ -27,7 +27,7 @@ st.markdown("""
     /* FILTRES TAGS */
     div[data-testid="stCheckbox"] { margin-bottom: -15px !important; }
     
-    /* ACCORDÉONS */
+    /* STYLE ACCORDÉONS */
     .stExpander { border: none !important; background-color: transparent !important; }
     .stExpander summary p { font-weight: bold !important; color: #202b24 !important; font-size: 0.85rem !important; }
 
@@ -47,12 +47,13 @@ st.markdown("""
         text-decoration: none !important; font-size: 0.85rem !important; 
         display: block; text-align: right; margin-top: 10px; cursor: pointer;
     }
+    .reset-link:hover { color: #7397a3 !important; }
 
-    /* DESIGN DES CARTES - FORÇAGE ALIGNEMENT */
+    /* DESIGN DES CARTES - ÉGALISATION DU BAS */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #efede1 !important; border: 1px solid #b6beb1 !important;
         border-radius: 8px !important; padding: 15px !important;
-        min-height: 160px !important; /* Pour égaliser les hauteurs */
+        min-height: 160px !important; /* Force l'alignement horizontal sur la ligne */
         display: flex !important; flex-direction: column !important;
         justify-content: space-between !important;
     }
@@ -75,7 +76,7 @@ try:
     df = pd.read_csv("Spottable v4.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
-    # Préparation géo
+    # Préparation données géo
     lat_col = next(cn for cn in df.columns if cn in ['latitude', 'lat'])
     lon_col = next(cn for cn in df.columns if cn in ['longitude', 'lon'])
     df['lat'] = pd.to_numeric(df[lat_col].astype(str).str.replace(',', '.'), errors='coerce')
@@ -98,11 +99,11 @@ try:
         with c_reset_ui:
             st.markdown('<a href="/?reset=1" target="_self" class="reset-link">Tout réinitialiser</a>', unsafe_allow_html=True)
 
-        # Logique de filtrage statut et tags
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
         if col_tags:
             all_tags_list = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
+            
             c_status, c_logic = st.columns([1, 1])
             with c_status:
                 col_a, col_b = st.columns(2)
@@ -111,11 +112,14 @@ try:
             
             logic = c_logic.radio("Logique", ["Exclusif (ET)", "Cumulatif (OU)"], horizontal=True, label_visibility="collapsed")
 
+            st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+
             selected_tags = []
             with st.expander("Type de lieu"):
                 t_cols_lieu = st.columns(4)
                 tag_lieu_list = ["Restaurant", "Bar", "Café", "Pâtisserie", "Boulangerie", "Glacier", "Marché", "Traiteur"]
-                for i, tag in enumerate([t for t in tag_lieu_list if t in all_tags_list]):
+                present_lieu = [t for t in tag_lieu_list if t in all_tags_list]
+                for i, tag in enumerate(present_lieu):
                     if t_cols_lieu[i % 4].toggle(tag, key=f"toggle_{tag}"): selected_tags.append(tag)
 
             with st.expander("Type de cuisine"):
@@ -137,27 +141,33 @@ try:
                 df_filtered = df_filtered[df_filtered[col_tags].apply(check_tags)]
 
     with col_map:
-        # --- FIX BUG CARTE ---
-        # Définir l'icône comme un dictionnaire Python propre, pas une chaîne JSON
-        icon_config = {
+        # --- FIX BUG CARTE (Format icône stable) ---
+        icon_data = {
             "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
             "width": 100,
             "height": 100,
             "anchorY": 100
         }
-        df_filtered['icon_data'] = [icon_config] * len(df_filtered)
-
-        # Centrage dynamique
-        c_lat = df_filtered['lat'].mean() if not df_filtered.empty else 48.8566
-        c_lon = df_filtered['lon'].mean() if not df_filtered.empty else 2.3522
+        # On ne rajoute pas icon_data dans le dataframe pour éviter l'erreur "bad argument type"
+        
+        # CENTRAGE : Paris par défaut, sinon moyenne des points filtrés
+        if search_query == "" and not any(st.session_state.get(f"toggle_{t}", False) for t in all_tags_list) and not t_a_tester and not t_teste:
+            c_lat, c_lon, v_zoom = 48.8566, 2.3522, 12
+        else:
+            if not df_filtered.empty:
+                c_lat = df_filtered['lat'].mean()
+                c_lon = df_filtered['lon'].mean()
+                v_zoom = 12 if len(df_filtered) > 1 else 14
+            else:
+                c_lat, c_lon, v_zoom = 48.8566, 2.3522, 11
 
         st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-            initial_view_state=pdk.ViewState(latitude=c_lat, longitude=c_lon, zoom=12),
+            initial_view_state=pdk.ViewState(latitude=c_lat, longitude=c_lon, zoom=v_zoom, pitch=0),
             layers=[pdk.Layer(
                 "IconLayer",
                 data=df_filtered,
-                get_icon="icon_data",
+                get_icon=f"'{icon_data}'", # Fix technique pour Pydeck
                 get_size=4,
                 size_scale=10,
                 get_position=["lon", "lat"],
