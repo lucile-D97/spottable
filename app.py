@@ -101,7 +101,7 @@ st.markdown("""
 st.title("Mes spots")
 
 try:
-    df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
+    df = pd.read_csv("Spottable v4.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
     lat_col = next((cn for cn in df.columns if cn in ['latitude', 'lat']), None)
