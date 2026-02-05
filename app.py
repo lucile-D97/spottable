@@ -187,4 +187,37 @@ try:
         df_filtered['icon_data'] = [icon_data] * len(df_filtered)
 
         st.pydeck_chart(pdk.Deck(
-            map_style="
+            map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+            initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12),
+            layers=[pdk.Layer(
+                "IconLayer", data=df_filtered, get_icon="icon_data", get_size=4, size_scale=10,
+                get_position=["lon", "lat"], pickable=True, auto_highlight=True,
+                highlight_color=[182, 190, 177, 200]
+            )],
+            tooltip={"html": f"<b>{{{c_name}}}</b>", "style": {"backgroundColor": "#efede1", "color": "#202b24"}}
+        ))
+
+    # --- GRILLE DE SPOTS ---
+    st.markdown("---")
+    st.write(f"### {len(df_filtered)} spots trouvés")
+    
+    n_cols = 4
+    for i in range(0, len(df_filtered.head(100)), n_cols):
+        grid_cols = st.columns(n_cols)
+        for j, (idx, row) in enumerate(df_filtered.iloc[i:i+n_cols].iterrows()):
+            with grid_cols[j]:
+                with st.container(border=True):
+                    txt_col, btn_col = st.columns([4, 1])
+                    with txt_col:
+                        st.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
+                        if col_tags and pd.notna(row[col_tags]):
+                            st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
+                            t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
+                            st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
+                    with btn_col:
+                        if c_link and pd.notna(row[c_link]):
+                            st.link_button("Go", row[c_link])
+
+except Exception as e:
+    st.error(f"Erreur : {e}")
