@@ -25,41 +25,40 @@ st.markdown("""
     h1 { color: #d92644 !important; margin-bottom: 20px !important; }
     html, body, [class*="st-"], p, div, span, label, h3 { color: #202b24 !important; }
 
+    /* FILTRES TAGS RESSERRÉS */
+    div[data-testid="stCheckbox"] { margin-bottom: -15px !important; }
+    
+    /* ACCORDÉONS */
+    .stExpander { border: none !important; background-color: transparent !important; margin-bottom: 0px !important; }
+    .stExpander p { font-weight: bold; font-size: 0.85rem; }
+
     /* BARRE DE RECHERCHE */
-    div[data-testid="stTextInput"] div[data-baseweb="input"] { 
-        background-color: #b6beb1 !important; 
-        border: none !important; 
-        border-radius: 4px !important;
-    }
+    div[data-testid="stTextInput"] div[data-baseweb="input"] { background-color: #b6beb1 !important; border: none !important; border-radius: 4px !important; }
     div[data-testid="stTextInput"] input {
         padding-left: 40px !important;
         background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23B6BEB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
-        background-repeat: no-repeat;
-        background-position: 12px center;
+        background-repeat: no-repeat; background-position: 12px center;
     }
     .stTextInput p { display: none !important; } 
 
     /* RESET LINK */
     .reset-link {
-        font-family: inherit;
-        font-weight: bold !important;
-        color: #202b24 !important;
-        text-decoration: none !important;
-        font-size: 0.85rem !important; 
-        display: block;
-        text-align: right;
-        margin-top: 10px;
-        transition: color 0.2s;
-        cursor: pointer;
+        font-family: inherit; font-weight: bold !important; color: #202b24 !important;
+        text-decoration: none !important; font-size: 0.85rem !important; 
+        display: block; text-align: right; margin-top: 10px; transition: color 0.2s; cursor: pointer;
     }
     .reset-link:hover { color: #7397a3 !important; }
 
-    /* DESIGN DES CARTES */
+    /* DESIGN DES CARTES - AJOUT DE MIN-HEIGHT POUR ALIGNER LE BAS */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #efede1 !important;
         border: 1px solid #b6beb1 !important;
         border-radius: 8px !important;
-        padding: 15px 15px 12px 15px !important; /* Ajout d'espace en bas */
+        padding: 15px 15px 12px 15px !important;
+        min-height: 150px !important; /* Force l'alignement des bas de cartes */
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
     }
 
     .spot-title { color: #d92644; font-weight: bold; font-size: 0.95rem; line-height: 1.1; margin-bottom: 4px; }
@@ -72,36 +71,22 @@ st.markdown("""
     
     /* BOUTON GO */
     .stLinkButton a { 
-        background-color: #7397a3 !important; 
-        color: #efede1 !important; 
-        border-radius: 4px !important; 
-        font-weight: bold !important; 
-        padding: 0px 10px !important; 
-        font-size: 0.65rem !important;
-        height: 18px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        border: none !important;
-        text-decoration: none !important;
+        background-color: #7397a3 !important; color: #efede1 !important; border-radius: 4px !important; 
+        font-weight: bold !important; padding: 0px 10px !important; font-size: 0.65rem !important;
+        height: 18px !important; display: inline-flex !important; align-items: center !important;
+        border: none !important; text-decoration: none !important;
     }
-    .stLinkButton a:hover {
-        background-color: #b6beb1 !important;
-        color: #202b24 !important;
-    }
+    .stLinkButton a:hover { background-color: #b6beb1 !important; color: #202b24 !important; }
 
     /* Centrage bouton */
-    [data-testid="column"] {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
+    [data-testid="column"] { display: flex; flex-direction: column; justify-content: center; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("Mes spots")
 
 try:
-    df = pd.read_csv("Spottable v4.csv", sep=None, engine='python')
+    df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
     lat_col = next((cn for cn in df.columns if cn in ['latitude', 'lat']), None)
@@ -128,17 +113,43 @@ try:
         with c_reset_ui:
             st.markdown('<a href="/?reset=1" target="_self" class="reset-link">Tout réinitialiser</a>', unsafe_allow_html=True)
 
+        # Logique de filtrage par texte
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
+        # --- ORGANISATION DES TAGS EN ACCORDÉONS ---
         if col_tags:
-            all_tags = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
-            t_subcols = st.columns(4)
-            selected_tags = []
-            for i, tag in enumerate(all_tags):
-                with t_subcols[i % 4]:
-                    if st.toggle(tag, key=f"toggle_{tag}"):
-                        selected_tags.append(tag)
+            all_tags_list = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
             
+            # Définition des catégories
+            tag_a_tester = "A tester"
+            tag_lieu_list = ["Restaurant", "Bar", "Café", "Pâtisserie", "Boulangerie", "Glacier", "Marché", "Traiteur"]
+            
+            selected_tags = []
+
+            # 1. A TESTER (Visible, en haut)
+            if tag_a_tester in all_tags_list:
+                if st.toggle(tag_a_tester, key=f"toggle_{tag_a_tester}"):
+                    selected_tags.append(tag_a_tester)
+            
+            # 2. LIEU (Accordéon)
+            with st.expander("LIEU"):
+                t_cols_lieu = st.columns(3)
+                present_lieu_tags = [t for t in tag_lieu_list if t in all_tags_list]
+                for i, tag in enumerate(present_lieu_tags):
+                    with t_cols_lieu[i % 3]:
+                        if st.toggle(tag, key=f"toggle_{tag}"):
+                            selected_tags.append(tag)
+
+            # 3. CUISINE (Accordéon - Tout le reste)
+            with st.expander("CUISINE"):
+                t_cols_cuisine = st.columns(3)
+                other_tags = [t for t in all_tags_list if t != tag_a_tester and t not in tag_lieu_list]
+                for i, tag in enumerate(other_tags):
+                    with t_cols_cuisine[i % 3]:
+                        if st.toggle(tag, key=f"toggle_{tag}"):
+                            selected_tags.append(tag)
+            
+            # Application du filtre tags
             if selected_tags:
                 df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
 
@@ -168,18 +179,14 @@ try:
             with grid_cols[j]:
                 with st.container(border=True):
                     txt_col, btn_col = st.columns([4, 1])
-                    
                     with txt_col:
                         st.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
                         st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
                         
                         if col_tags and pd.notna(row[col_tags]):
-                            # Marge diminuée ici (4px)
                             st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
                             t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
                             st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
-                            # Petit espace final pour ne pas coller au bord
-                            st.markdown("<div style='height:2px;'></div>", unsafe_allow_html=True)
                     
                     with btn_col:
                         if c_link and pd.notna(row[c_link]):
