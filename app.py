@@ -1,5 +1,4 @@
 import streamlit as st
-import pdk
 import pandas as pd
 import pydeck as pdk
 import re
@@ -28,12 +27,11 @@ st.markdown("""
         padding-bottom: 1rem !important;
     }
 
-    /* TITRE PRINCIPAL RESSERRÉ */
+    /* TITRE PRINCIPAL */
     h1 { 
         color: #d92644 !important; 
         margin-top: 0px !important; 
         margin-bottom: 1rem !important; 
-        padding-top: 0px !important;
     }
 
     html, body, [class*="st-"], p, div, span, label, h3 { color: #202b24 !important; }
@@ -51,7 +49,6 @@ st.markdown("""
         font-weight: bold !important; 
         color: #202b24 !important; 
         font-size: 0.85rem !important; 
-        text-transform: none !important;
     }
 
     /* BARRE DE RECHERCHE */
@@ -67,7 +64,7 @@ st.markdown("""
     .reset-link {
         font-family: inherit; font-weight: bold !important; color: #202b24 !important;
         text-decoration: none !important; font-size: 0.85rem !important; 
-        display: block; text-align: right; margin-top: 10px; transition: color 0.2s; cursor: pointer;
+        display: block; text-align: right; margin-top: 10px; cursor: pointer;
     }
     .reset-link:hover { color: #7397a3 !important; }
 
@@ -76,7 +73,7 @@ st.markdown("""
         background-color: #efede1 !important;
         border: 1px solid #b6beb1 !important;
         border-radius: 8px !important;
-        padding: 15px 15px 12px 15px !important;
+        padding: 15px !important;
         min-height: 150px !important;
         display: flex !important;
         flex-direction: column !important;
@@ -98,7 +95,6 @@ st.markdown("""
         height: 18px !important; display: inline-flex !important; align-items: center !important;
         border: none !important; text-decoration: none !important;
     }
-    .stLinkButton a:hover { background-color: #b6beb1 !important; color: #202b24 !important; }
 
     /* Centrage bouton */
     [data-testid="column"] { display: flex; flex-direction: column; justify-content: center; }
@@ -137,7 +133,7 @@ try:
 
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
-        # --- GESTION DES TAGS ET LOGIQUE ---
+        # --- GESTION DES FILTRES ---
         if col_tags:
             all_tags_list = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
             tag_a_tester_label = "A tester"
@@ -150,7 +146,7 @@ try:
                 t_teste = cb.toggle("Testé", key="toggle_teste")
             
             with c_log:
-                logic = st.radio("Logique", ["Exclusif", "Cumulatif"], index=0, horizontal=True, label_visibility="collapsed")
+                logic = st.radio("Logique", ["Exclusif (ET)", "Cumulatif (OU)"], index=1, horizontal=True, label_visibility="collapsed")
 
             selected_tags = []
             st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
@@ -171,54 +167,24 @@ try:
                         if st.toggle(tag, key=f"toggle_{tag}"):
                             selected_tags.append(tag)
             
+            # Application filtres Statut
             if t_a_tester and not t_teste:
                 df_filtered = df_filtered[df_filtered[col_tags].str.contains(tag_a_tester_label, na=False)]
             elif t_teste and not t_a_tester:
                 df_filtered = df_filtered[~df_filtered[col_tags].str.contains(tag_a_tester_label, na=False)]
             
+            # Application filtres Tags
             if selected_tags:
                 def filter_logic(row_tags):
                     if pd.isna(row_tags): return False
                     row_list = [t.strip() for t in str(row_tags).split(',')]
-                    return all(t in row_list for t in selected_tags) if logic == "Exclusif" else any(t in row_list for t in selected_tags)
+                    return all(t in row_list for t in selected_tags) if "Exclusif" in logic else any(t in row_list for t in selected_tags)
                 df_filtered = df_filtered[df_filtered[col_tags].apply(filter_logic)]
 
     with col_map:
+        # On reste sur un ViewState fixe sur Paris pour éviter les bugs de rechargement
         icon_data = {"url": "https://img.icons8.com/ios-filled/100/d92644/marker.png", "width": 100, "height": 100, "anchorY": 100}
         df_filtered['icon_data'] = [icon_data] * len(df_filtered)
 
         st.pydeck_chart(pdk.Deck(
-            map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-            initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12),
-            layers=[pdk.Layer(
-                "IconLayer", data=df_filtered, get_icon="icon_data", get_size=4, size_scale=10,
-                get_position=["lon", "lat"], pickable=True, auto_highlight=True,
-                highlight_color=[182, 190, 177, 200]
-            )],
-            tooltip={"html": f"<b>{{{c_name}}}</b>", "style": {"backgroundColor": "#efede1", "color": "#202b24"}}
-        ))
-
-    # --- GRILLE DE SPOTS ---
-    st.markdown("---")
-    st.write(f"### {len(df_filtered)} spots trouvés")
-    
-    n_cols = 4
-    for i in range(0, len(df_filtered.head(100)), n_cols):
-        grid_cols = st.columns(n_cols)
-        for j, (idx, row) in enumerate(df_filtered.iloc[i:i+n_cols].iterrows()):
-            with grid_cols[j]:
-                with st.container(border=True):
-                    txt_col, btn_col = st.columns([4, 1])
-                    with txt_col:
-                        st.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
-                        st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
-                        if col_tags and pd.notna(row[col_tags]):
-                            st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
-                            t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
-                            st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
-                    with btn_col:
-                        if c_link and pd.notna(row[c_link]):
-                            st.link_button("Go", row[c_link])
-
-except Exception as e:
-    st.error(f"Erreur : {e}")
+            map_style="
