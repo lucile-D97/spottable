@@ -14,7 +14,7 @@ if "reset" in st.query_params:
             st.session_state[key] = False
     st.rerun()
 
-# 2. Style CSS (Design et alignement horizontal)
+# 2. Style CSS
 st.markdown("""
     <style>
     .stApp { background-color: #efede1 !important; }
@@ -37,7 +37,7 @@ st.markdown("""
     }
     div[data-testid="stTextInput"] input {
         padding-left: 40px !important;
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23B6BEB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23B6BEB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" i1="21" x2="16.65" y2="16.65"></line></svg>');
         background-repeat: no-repeat; background-position: 12px center;
     }
 
@@ -49,11 +49,11 @@ st.markdown("""
     }
     .reset-link:hover { color: #7397a3 !important; }
 
-    /* DESIGN DES CARTES - ÉGALISATION DU BAS */
+    /* DESIGN DES CARTES */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #efede1 !important; border: 1px solid #b6beb1 !important;
         border-radius: 8px !important; padding: 15px !important;
-        min-height: 160px !important; /* Force l'alignement horizontal sur la ligne */
+        min-height: 160px !important;
         display: flex !important; flex-direction: column !important;
         justify-content: space-between !important;
     }
@@ -65,7 +65,6 @@ st.markdown("""
     /* BOUTON GO */
     .stLinkButton a { background-color: #7397a3 !important; color: #efede1 !important; border-radius: 4px !important; font-weight: bold !important; padding: 0px 10px !important; font-size: 0.65rem !important; height: 18px !important; display: inline-flex !important; align-items: center !important; text-decoration: none !important; }
     
-    /* Centrage vertical colonne bouton */
     [data-testid="column"] { display: flex; flex-direction: column; justify-content: center; }
     </style>
     """, unsafe_allow_html=True)
@@ -76,7 +75,6 @@ try:
     df = pd.read_csv("Spottable v4.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
-    # Préparation données géo
     lat_col = next(cn for cn in df.columns if cn in ['latitude', 'lat'])
     lon_col = next(cn for cn in df.columns if cn in ['longitude', 'lon'])
     df['lat'] = pd.to_numeric(df[lat_col].astype(str).str.replace(',', '.'), errors='coerce')
@@ -103,7 +101,6 @@ try:
 
         if col_tags:
             all_tags_list = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
-            
             c_status, c_logic = st.columns([1, 1])
             with c_status:
                 col_a, col_b = st.columns(2)
@@ -111,8 +108,6 @@ try:
                 t_teste = col_b.toggle("Testé", key="toggle_teste")
             
             logic = c_logic.radio("Logique", ["Exclusif (ET)", "Cumulatif (OU)"], horizontal=True, label_visibility="collapsed")
-
-            st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
 
             selected_tags = []
             with st.expander("Type de lieu"):
@@ -141,33 +136,20 @@ try:
                 df_filtered = df_filtered[df_filtered[col_tags].apply(check_tags)]
 
     with col_map:
-        # --- FIX BUG CARTE (Format icône stable) ---
+        # Configuration icône robuste
         icon_data = {
             "url": "https://img.icons8.com/ios-filled/100/d92644/marker.png",
-            "width": 100,
-            "height": 100,
-            "anchorY": 100
+            "width": 100, "height": 100, "anchorY": 100
         }
-        # On ne rajoute pas icon_data dans le dataframe pour éviter l'erreur "bad argument type"
-        
-        # CENTRAGE : Paris par défaut, sinon moyenne des points filtrés
-        if search_query == "" and not any(st.session_state.get(f"toggle_{t}", False) for t in all_tags_list) and not t_a_tester and not t_teste:
-            c_lat, c_lon, v_zoom = 48.8566, 2.3522, 12
-        else:
-            if not df_filtered.empty:
-                c_lat = df_filtered['lat'].mean()
-                c_lon = df_filtered['lon'].mean()
-                v_zoom = 12 if len(df_filtered) > 1 else 14
-            else:
-                c_lat, c_lon, v_zoom = 48.8566, 2.3522, 11
 
+        # CARTE FIXE SUR PARIS
         st.pydeck_chart(pdk.Deck(
             map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-            initial_view_state=pdk.ViewState(latitude=c_lat, longitude=c_lon, zoom=v_zoom, pitch=0),
+            initial_view_state=pdk.ViewState(latitude=48.8566, longitude=2.3522, zoom=12, pitch=0),
             layers=[pdk.Layer(
                 "IconLayer",
                 data=df_filtered,
-                get_icon=f"'{icon_data}'", # Fix technique pour Pydeck
+                get_icon=f"{icon_data}",
                 get_size=4,
                 size_scale=10,
                 get_position=["lon", "lat"],
