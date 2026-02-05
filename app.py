@@ -28,9 +28,14 @@ st.markdown("""
     /* FILTRES TAGS RESSERRÉS */
     div[data-testid="stCheckbox"] { margin-bottom: -15px !important; }
     
-    /* ACCORDÉONS */
-    .stExpander { border: none !important; background-color: transparent !important; margin-bottom: 0px !important; }
-    .stExpander p { font-weight: bold; font-size: 0.85rem; }
+    /* STYLE DES ACCORDÉONS (Titres identiques au tag A Tester) */
+    .stExpander { border: none !important; background-color: transparent !important; }
+    .stExpander summary p { 
+        font-weight: bold !important; 
+        color: #202b24 !important; 
+        font-size: 0.85rem !important; 
+        text-transform: none !important;
+    }
 
     /* BARRE DE RECHERCHE */
     div[data-testid="stTextInput"] div[data-baseweb="input"] { background-color: #b6beb1 !important; border: none !important; border-radius: 4px !important; }
@@ -49,13 +54,13 @@ st.markdown("""
     }
     .reset-link:hover { color: #7397a3 !important; }
 
-    /* DESIGN DES CARTES - AJOUT DE MIN-HEIGHT POUR ALIGNER LE BAS */
+    /* DESIGN DES CARTES */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #efede1 !important;
         border: 1px solid #b6beb1 !important;
         border-radius: 8px !important;
         padding: 15px 15px 12px 15px !important;
-        min-height: 150px !important; /* Force l'alignement des bas de cartes */
+        min-height: 150px !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: space-between !important;
@@ -86,7 +91,7 @@ st.markdown("""
 st.title("Mes spots")
 
 try:
-    df = pd.read_csv("Spottable v3.csv", sep=None, engine='python')
+    df = pd.read_csv("Spottable v4.csv", sep=None, engine='python')
     df.columns = df.columns.str.strip().str.lower()
     
     lat_col = next((cn for cn in df.columns if cn in ['latitude', 'lat']), None)
@@ -113,43 +118,41 @@ try:
         with c_reset_ui:
             st.markdown('<a href="/?reset=1" target="_self" class="reset-link">Tout réinitialiser</a>', unsafe_allow_html=True)
 
-        # Logique de filtrage par texte
         df_filtered = df[df[c_name].str.contains(search_query, case=False, na=False)].copy()
 
-        # --- ORGANISATION DES TAGS EN ACCORDÉONS ---
+        # --- FILTRES TAGS ---
         if col_tags:
             all_tags_list = sorted(list(set([t.strip() for val in df[col_tags].dropna() for t in str(val).split(',')])))
-            
-            # Définition des catégories
             tag_a_tester = "A tester"
             tag_lieu_list = ["Restaurant", "Bar", "Café", "Pâtisserie", "Boulangerie", "Glacier", "Marché", "Traiteur"]
-            
             selected_tags = []
 
-            # 1. A TESTER (Visible, en haut)
+            # 1. A TESTER (Toujours en haut)
             if tag_a_tester in all_tags_list:
                 if st.toggle(tag_a_tester, key=f"toggle_{tag_a_tester}"):
                     selected_tags.append(tag_a_tester)
             
-            # 2. LIEU (Accordéon)
-            with st.expander("LIEU"):
-                t_cols_lieu = st.columns(3)
+            # ESPACEMENT SUPPLÉMENTAIRE
+            st.markdown("<div style='height:15px;'></div>", unsafe_allow_html=True)
+            
+            # 2. TYPE DE LIEU (Accordéon)
+            with st.expander("Type de lieu"):
+                t_cols_lieu = st.columns(4)
                 present_lieu_tags = [t for t in tag_lieu_list if t in all_tags_list]
                 for i, tag in enumerate(present_lieu_tags):
-                    with t_cols_lieu[i % 3]:
+                    with t_cols_lieu[i % 4]:
                         if st.toggle(tag, key=f"toggle_{tag}"):
                             selected_tags.append(tag)
 
-            # 3. CUISINE (Accordéon - Tout le reste)
-            with st.expander("CUISINE"):
-                t_cols_cuisine = st.columns(3)
+            # 3. TYPE DE CUISINE (Accordéon)
+            with st.expander("Type de cuisine"):
+                t_cols_cuisine = st.columns(4)
                 other_tags = [t for t in all_tags_list if t != tag_a_tester and t not in tag_lieu_list]
                 for i, tag in enumerate(other_tags):
-                    with t_cols_cuisine[i % 3]:
+                    with t_cols_cuisine[i % 4]:
                         if st.toggle(tag, key=f"toggle_{tag}"):
                             selected_tags.append(tag)
             
-            # Application du filtre tags
             if selected_tags:
                 df_filtered = df_filtered[df_filtered[col_tags].apply(lambda x: any(t.strip() in selected_tags for t in str(x).split(',')) if pd.notna(x) else False)]
 
@@ -182,12 +185,10 @@ try:
                     with txt_col:
                         st.markdown(f"<div class='spot-title'>{row[c_name]}</div>", unsafe_allow_html=True)
                         st.markdown(f"<div class='spot-addr'>📍 {row[c_addr]}</div>", unsafe_allow_html=True)
-                        
                         if col_tags and pd.notna(row[col_tags]):
                             st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
                             t_html = "".join([f'<span class="tag-label">{t.strip()}</span>' for t in str(row[col_tags]).split(',')])
                             st.markdown(f"<div>{t_html}</div>", unsafe_allow_html=True)
-                    
                     with btn_col:
                         if c_link and pd.notna(row[c_link]):
                             st.link_button("Go", row[c_link])
